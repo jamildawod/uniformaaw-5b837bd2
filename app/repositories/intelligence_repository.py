@@ -188,6 +188,34 @@ class IntelligenceRepository:
             "recent_runs": [dict(row) for row in recent_runs_result.mappings().all()],
         }
 
+    async def fetch_recent_sync_runs(self, limit: int, offset: int) -> list[dict[str, Any]]:
+        result = await self.session.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    started_at,
+                    finished_at,
+                    status,
+                    EXTRACT(EPOCH FROM (finished_at - started_at)) AS duration_seconds,
+                    products_created,
+                    products_updated,
+                    variants_created,
+                    variants_updated,
+                    images_synced,
+                    error_message
+                FROM sync_runs
+                ORDER BY started_at DESC
+                LIMIT :limit OFFSET :offset
+                """
+            ),
+            {
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        return [dict(row) for row in result.mappings().all()]
+
     async def fetch_override_conflicts(self, page: int, page_size: int) -> dict[str, Any]:
         offset = (page - 1) * page_size
         base_query = """

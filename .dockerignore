@@ -6,3 +6,8 @@ __pycache__
 *.pyc
 .env
 uniforma_pgdata
+admin-ui/node_modules
+admin-ui/.next
+admin-ui/.next.stale-*
+storage
+data

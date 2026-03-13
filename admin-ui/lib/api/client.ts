@@ -1,6 +1,7 @@
 import type { AdminImagePayload, AdminOverridePayload, AdminProduct, ProductListFilters } from "@/lib/types/products";
 import type { AuthTokens } from "@/lib/types/auth";
 import type { PimSyncResponse, SyncRun } from "@/lib/types/sync";
+import { apiEndpoints } from "@/lib/api/endpoints";
 
 type RequestOptions = RequestInit & {
   query?: Record<string, string | number | undefined>;
@@ -61,35 +62,35 @@ export function logoutRequest(): Promise<void> {
 }
 
 export function patchProductOverride(productId: string, payload: AdminOverridePayload): Promise<AdminProduct> {
-  return apiFetch<AdminProduct>(`/api/uniforma/api/v1/admin/products/${productId}`, {
+  return apiFetch<AdminProduct>(toUniformaProxy(apiEndpoints.adminProduct(productId)), {
     method: "PATCH",
     body: JSON.stringify(payload)
   });
 }
 
 export function createProductImage(productId: string, payload: AdminImagePayload): Promise<AdminProduct> {
-  return apiFetch<AdminProduct>(`/api/uniforma/api/v1/admin/products/${productId}/image`, {
+  return apiFetch<AdminProduct>(toUniformaProxy(apiEndpoints.adminProductImage(productId)), {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
 export function triggerPimSync(): Promise<PimSyncResponse> {
-  return apiFetch<PimSyncResponse>("/api/uniforma/api/v1/admin/sync/pim", {
+  return apiFetch<PimSyncResponse>(toUniformaProxy(apiEndpoints.adminSyncTrigger), {
     method: "POST"
   });
 }
 
 export function getSyncRuns(): Promise<SyncRun[]> {
-  return apiFetch<SyncRun[]>("/api/uniforma/api/v1/admin/sync/runs");
+  return apiFetch<SyncRun[]>(toUniformaProxy(apiEndpoints.adminSyncRuns));
 }
 
 export function getAdminProduct(productId: string): Promise<AdminProduct> {
-  return apiFetch<AdminProduct>(`/api/uniforma/api/v1/admin/products/${productId}`);
+  return apiFetch<AdminProduct>(toUniformaProxy(apiEndpoints.adminProduct(productId)));
 }
 
 export function getAdminProducts(filters: ProductListFilters): Promise<AdminProduct[]> {
-  return apiFetch<AdminProduct[]>("/api/uniforma/api/v1/admin/products", {
+  return apiFetch<AdminProduct[]>(toUniformaProxy(apiEndpoints.adminProducts), {
     query: {
       limit: filters.pageSize,
       offset: (filters.page - 1) * filters.pageSize
@@ -103,4 +104,8 @@ async function safeJson(response: Response): Promise<unknown | null> {
   } catch {
     return null;
   }
+}
+
+function toUniformaProxy(path: string): string {
+  return `/api/uniforma${path}`;
 }

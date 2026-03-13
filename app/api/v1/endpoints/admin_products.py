@@ -8,7 +8,9 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.admin_override_repository import AdminOverrideRepository
+from app.repositories.intelligence_repository import IntelligenceRepository
 from app.repositories.product_repository import ProductRepository
+from app.schemas.intelligence import SyncRun as SyncRunRead
 from app.schemas.product import AdminImageCreateRequest, AdminOverridePatchRequest, AdminProductRead
 from app.schemas.sync import PimSyncResponse
 from app.services.ftp_image_service import FtpImageService
@@ -90,3 +92,15 @@ async def sync_pim(
         settings,
     )
     return await sync_service.run_sync()
+
+
+@router.get("/admin/sync/runs", response_model=list[SyncRunRead])
+async def list_sync_runs(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+) -> list[SyncRunRead]:
+    repository = IntelligenceRepository(db)
+    runs = await repository.fetch_recent_sync_runs(limit=limit, offset=offset)
+    return [SyncRunRead(**run) for run in runs]

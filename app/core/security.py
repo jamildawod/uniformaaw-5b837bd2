@@ -14,6 +14,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class TokenPayload:
     subject: str | None
     token_type: str | None
+    role: str | None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -29,6 +30,7 @@ def _create_token(
     expires_delta: timedelta,
     secret_key: str,
     token_type: str,
+    role: str | None = None,
 ) -> str:
     now = datetime.now(UTC)
     payload: dict[str, Any] = {
@@ -37,6 +39,8 @@ def _create_token(
         "iat": int(now.timestamp()),
         "exp": int((now + expires_delta).timestamp()),
     }
+    if role is not None:
+        payload["role"] = role
     return jwt.encode(
         payload,
         secret_key,
@@ -44,23 +48,25 @@ def _create_token(
     )
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: str, role: str | None = None) -> str:
     settings = get_settings()
     return _create_token(
         subject=subject,
         expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
         secret_key=settings.jwt_secret_key,
         token_type="access",
+        role=role,
     )
 
 
-def create_refresh_token(subject: str) -> str:
+def create_refresh_token(subject: str, role: str | None = None) -> str:
     settings = get_settings()
     return _create_token(
         subject=subject,
         expires_delta=timedelta(minutes=settings.jwt_refresh_token_expire_minutes),
         secret_key=settings.jwt_refresh_secret_key,
         token_type="refresh",
+        role=role,
     )
 
 
@@ -80,9 +86,10 @@ def decode_token(token: str) -> TokenPayload:
             continue
 
     if decoded is None:
-        return TokenPayload(subject=None, token_type=None)
+        return TokenPayload(subject=None, token_type=None, role=None)
 
     return TokenPayload(
         subject=decoded.get("sub"),
         token_type=decoded.get("type"),
+        role=decoded.get("role") if isinstance(decoded.get("role"), str) else None,
     )

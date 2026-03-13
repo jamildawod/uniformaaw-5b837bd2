@@ -69,10 +69,34 @@ export function ProductTable({
       <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
         <span>Page {filters.page}</span>
         <div className="flex gap-2">
-          {filters.page > 1 ? <Link href={`/admin/products?page=${filters.page - 1}`}>Previous</Link> : <span className="opacity-40">Previous</span>}
-          <Link href={`/admin/products?page=${filters.page + 1}`}>Next</Link>
+          {filters.page > 1 ? <Link href={buildProductPageHref(filters, filters.page - 1)}>Previous</Link> : <span className="opacity-40">Previous</span>}
+          <Link href={buildProductPageHref(filters, filters.page + 1)}>Next</Link>
         </div>
       </div>
     </div>
   );
+}
+
+function buildProductPageHref(filters: ProductListFilters, page: number): string {
+  const params = new URLSearchParams({
+    page: String(page)
+  });
+
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.filter) {
+    params.set("filter", filters.filter);
+  }
+  if (filters.isActive && filters.isActive !== "all") {
+    params.set("isActive", filters.isActive);
+  }
+  if (filters.deleted && filters.deleted !== "all") {
+    params.set("deleted", filters.deleted);
+  }
+  if (filters.hasOverride && filters.hasOverride !== "all") {
+    params.set("hasOverride", filters.hasOverride);
+  }
+
+  return `/admin/products?${params.toString()}`;
 }

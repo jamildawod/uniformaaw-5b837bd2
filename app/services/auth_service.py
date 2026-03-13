@@ -17,9 +17,10 @@ class AuthService:
         user = await self.user_service.get_by_email(email)
         if user is None or not verify_password(password, user.hashed_password):
             return None
+        role = "admin" if user.is_superuser else "editor"
         return TokenPair(
-            access_token=create_access_token(user.email),
-            refresh_token=create_refresh_token(user.email),
+            access_token=create_access_token(user.email, role=role),
+            refresh_token=create_refresh_token(user.email, role=role),
         )
 
     async def refresh_tokens(self, refresh_token: str) -> TokenPair | None:
@@ -30,8 +31,9 @@ class AuthService:
         user = await self.user_service.get_by_email(payload.subject)
         if user is None or not user.is_active:
             return None
+        role = "admin" if user.is_superuser else "editor"
 
         return TokenPair(
-            access_token=create_access_token(user.email),
-            refresh_token=create_refresh_token(user.email),
+            access_token=create_access_token(user.email, role=role),
+            refresh_token=create_refresh_token(user.email, role=role),
         )
