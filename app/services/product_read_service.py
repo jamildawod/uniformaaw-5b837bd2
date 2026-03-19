@@ -1,5 +1,28 @@
 import uuid
 
+from app.models.product_image import ProductImage as _ProductImage
+
+
+def _resolve_product_image_url(img: "_ProductImage") -> str | None:
+    """Mirror ProductImageRead.url resolution logic for plain ORM instances."""
+    lp = img.local_path
+    if lp:
+        if lp.startswith(("http://", "https://", "/uploads/", "/media/")):
+            return lp
+        idx = lp.find("/images/")
+        if idx != -1:
+            return f"/media/{lp[idx + len('/images/'):]}"
+        idx2 = lp.find("/uploads/")
+        if idx2 != -1:
+            return f"/uploads/{lp[idx2 + len('/uploads/'):]}"
+    ep = img.external_path
+    if ep:
+        if ep.startswith(("http://", "https://")):
+            return ep
+        return f"/media/{ep.lstrip('/')}"
+    return None
+
+
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
@@ -9,13 +32,16 @@ from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.repositories.admin_override_repository import AdminOverrideRepository
 from app.repositories.product_repository import ProductRepository
+from app.schemas.category import CategoryListItem
 from app.schemas.product import (
     AdminImageCreateRequest,
     AdminProductRead,
     AdminOverridePatchRequest,
+    FiltersRead,
     ProductRead,
     ProductVariantRead,
 )
+from app.services.cache_service import CacheService
 
 ALLOWED_OVERRIDE_FIELDS = {
     "name",
@@ -25,19 +51,101 @@ ALLOWED_OVERRIDE_FIELDS = {
 
 
 class ProductReadService:
+    FILTERS_CACHE_KEY = "public:filters:v2"
+
     def __init__(
         self,
         product_repository: ProductRepository,
         admin_override_repository: AdminOverrideRepository,
+        cache_service: CacheService | None = None,
     ) -> None:
         self.product_repository = product_repository
         self.admin_override_repository = admin_override_repository
+        self.cache_service = cache_service
         self.logger = get_logger(self.__class__.__name__)
 
-    async def list_public_products(self, limit: int = 50, offset: int = 0) -> list[ProductRead]:
-        products = await self.product_repository.list_active_products(limit=limit, offset=offset)
+    async def list_public_products(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        category_slug: str | None = None,
+        color: str | None = None,
+        size: str | None = None,
+    ) -> list[ProductRead]:
+        products = await self.product_repository.list_active_products(
+            limit=limit,
+            offset=offset,
+            category_slug=category_slug,
+            color=color,
+            size=size,
+        )
         override_map = await self.admin_override_repository.list_by_product_ids([product.id for product in products])
         return [self._merge_product(product, override_map.get(product.id, [])) for product in products]
+
+    async def get_filters(self) -> FiltersRead:
+        if self.cache_service is not None:
+            try:
+                cached = await self.cache_service.get_json(self.FILTERS_CACHE_KEY)
+                if cached is not None:
+                    return FiltersRead.model_validate(cached)
+            except Exception as exc:
+                self.logger.warning("Filters cache lookup failed: %s", exc)
+
+        data = await self.product_repository.get_filters()
+        payload = FiltersRead.model_validate(data)
+
+        if self.cache_service is not None:
+            try:
+                await self.cache_service.set_json(
+                    self.FILTERS_CACHE_KEY,
+                    payload.model_dump(mode="json"),
+                    ttl_seconds=self.cache_service.settings.filters_cache_ttl_seconds,
+                )
+            except Exception as exc:
+                self.logger.warning("Filters cache write failed: %s", exc)
+
+        return payload
+
+    async def list_categories(self) -> list[CategoryListItem]:
+        categories = await self.product_repository.list_active_categories()
+
+        # Auto-resolve images for categories that have no image set
+        null_ids = [c.id for c in categories if not getattr(c, "image", None)]
+        auto_images: dict[int, str] = {}
+        if null_ids:
+            img_map = await self.product_repository.get_primary_images_for_categories(null_ids)
+            for cat_id, img in img_map.items():
+                url = _resolve_product_image_url(img)
+                if url:
+                    auto_images[cat_id] = url
+
+        return [
+            CategoryListItem.model_validate(
+                {
+                    "id": category.id,
+                    "name": category.name,
+                    "slug": category.slug,
+                    "image": getattr(category, "image", None) or auto_images.get(category.id),
+                    "parent_id": category.parent_id,
+                }
+            )
+            for category in categories
+        ]
+
+    async def list_root_categories(self) -> list[CategoryListItem]:
+        categories = await self.product_repository.list_root_categories()
+        return [
+            CategoryListItem.model_validate(
+                {
+                    "id": category.id,
+                    "name": category.name,
+                    "slug": category.slug,
+                    "image": getattr(category, "image", None),
+                    "parent_id": category.parent_id,
+                }
+            )
+            for category in categories
+        ]
 
     async def get_public_product(self, slug: str) -> ProductRead | None:
         product = await self.product_repository.get_product_by_slug(slug)
