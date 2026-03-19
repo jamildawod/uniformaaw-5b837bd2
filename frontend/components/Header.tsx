@@ -44,19 +44,28 @@ export function Header() {
         </a>
       </div>
 
-      {/* NAV BAR — MegaMenu + Nav links */}
-      <div className="border-t border-stone-100 bg-stone-50">
-        <div className="mx-auto flex max-w-7xl items-center gap-8 px-6 py-3 md:px-8">
-          <MegaMenu />
-          <nav className="flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm font-semibold uppercase tracking-wide text-stone-600 transition hover:text-stone-900"
-              >
-                {link.label}
-              </a>
+      {/* NAV STRIP — Bizay style */}
+      <div className="w-full border-t border-b border-gray-200 bg-[#f7f7f7]">
+        <div className="mx-auto flex max-w-7xl items-center px-6 md:px-8">
+          {/* Alla produkter button */}
+          <div className="mr-4 flex h-[50px] flex-shrink-0 items-center border-r border-gray-200 pr-4">
+            <MegaMenu />
+          </div>
+
+          {/* Nav links with separators */}
+          <nav className="flex items-center">
+            {NAV_LINKS.map((link, index) => (
+              <div key={link.href} className="flex items-center">
+                <a
+                  href={link.href}
+                  className="flex h-[50px] items-center px-5 text-[15px] font-normal tracking-wide text-gray-700 transition hover:text-black"
+                >
+                  {link.label}
+                </a>
+                {index !== NAV_LINKS.length - 1 && (
+                  <span className="h-5 w-px bg-gray-300" />
+                )}
+              </div>
             ))}
           </nav>
         </div>
