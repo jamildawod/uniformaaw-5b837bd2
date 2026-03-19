@@ -8,9 +8,9 @@ export default async function HomePage() {
   const featuredCategories = filters.categories.slice(0, 4);
 
   return (
-    <div className="overflow-hidden">
+    <div>
       <CategorySection />
-      <div className="border-t border-stone-100 pt-4">
+      <div>
         {featuredCategories.map((category) => (
           <CategoryProductsRow key={category.id} category={category} />
         ))}
