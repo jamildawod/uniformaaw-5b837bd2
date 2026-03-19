@@ -4,10 +4,10 @@ import Link from "next/link";
 import MegaMenu from "@/components/navigation/MegaMenu";
 
 const NAV_LINKS = [
-  { href: "/",            label: "Startsida" },
-  { href: "/shop",        label: "Produkter" },
-  { href: "/om-oss",      label: "Om oss" },
-  { href: "/kontakt",     label: "Kontakt" },
+  { href: "/",               label: "Startsida" },
+  { href: "/om-oss",         label: "Om oss" },
+  { href: "/superdeal",      label: "Superdeal" },
+  { href: "/storleksguide",  label: "Storleksguide" },
 ];
 
 export function Header() {
