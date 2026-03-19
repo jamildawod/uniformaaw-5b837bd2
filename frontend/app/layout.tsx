@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 
 import "./globals.css";
 
+import { Header } from "@/components/Header";
+
 export const metadata = {
   title: "Uniforma",
-  description: "Uniforma storefront",
+  description: "Uniforma produktkatalog",
 };
 
 export default function RootLayout({
@@ -14,7 +16,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="sv">
-      <body>{children}</body>
+      <body className="antialiased bg-stone-50 text-stone-950">
+        <Header />
+        <main className="min-h-screen">{children}</main>
+      </body>
     </html>
   );
 }
