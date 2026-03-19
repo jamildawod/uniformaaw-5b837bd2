@@ -162,6 +162,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
             src={imgSrc}
             alt={safeName}
             fill
+            unoptimized
             className="object-contain"
             sizes="160px"
             loading="lazy"
