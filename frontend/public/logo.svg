@@ -1,0 +1,17 @@
+<svg width="360" height="100" viewBox="0 0 360 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Uniforma logo">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+  <rect width="360" height="100" rx="24" fill="#ffffff" />
+  <circle cx="50" cy="50" r="30" fill="url(#grad)" opacity="0.9" />
+  <path d="M42 40 L58 40 L55 63 L45 63 Z" fill="#fff" opacity="0.9" />
+  <text x="90" y="60" font-family="'Inter', 'Segoe UI', sans-serif" font-size="42" font-weight="700" fill="#0f172a">
+    Uniforma
+  </text>
+  <text x="90" y="80" font-family="'Inter', 'Segoe UI', sans-serif" font-size="14" fill="#475569" letter-spacing="0.25em">
+    PROFESSIONAL WORKWEAR
+  </text>
+</svg>
