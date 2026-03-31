@@ -1,0 +1,3 @@
+interface:
+  display_name: "Admin Guard"
+  short_description: "Protects Uniforma admin frontend work with minimal, verified changes."

@@ -23,6 +23,7 @@ class ProductVariant(Base):
         nullable=False,
     )
     sku: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    supplier_sku: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     source_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     ean: Mapped[str | None] = mapped_column(String(64), nullable=True)
     color: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -50,3 +51,7 @@ class ProductVariant(Base):
         back_populates="variant",
         cascade="all, delete-orphan",
     )
+
+
+Index("ix_product_variants_lower_color", func.lower(ProductVariant.color))
+Index("ix_product_variants_lower_size", func.lower(ProductVariant.size))

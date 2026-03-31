@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.security import decode_token
 from app.db.session import get_db
 from app.models.user import User
@@ -11,7 +12,9 @@ from app.repositories.admin_override_repository import AdminOverrideRepository
 from app.repositories.product_repository import ProductRepository
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
+from app.services.cache_service import CacheService
 from app.services.product_read_service import ProductReadService
+from app.services.rate_limit_service import RateLimitService
 from app.services.user_service import UserService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -25,10 +28,24 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(UserRepository(db))
 
 
-async def get_product_read_service(db: AsyncSession = Depends(get_db)) -> ProductReadService:
+async def get_cache_service() -> CacheService:
+    return CacheService(get_settings())
+
+
+async def get_rate_limit_service(
+    cache_service: CacheService = Depends(get_cache_service),
+) -> RateLimitService:
+    return RateLimitService(cache_service, get_settings())
+
+
+async def get_product_read_service(
+    db: AsyncSession = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+) -> ProductReadService:
     return ProductReadService(
         ProductRepository(db),
         AdminOverrideRepository(db),
+        cache_service,
     )
 
 

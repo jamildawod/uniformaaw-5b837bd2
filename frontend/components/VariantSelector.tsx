@@ -2,6 +2,25 @@
 
 import { useMemo, useEffect } from "react"
 import type { StoreVariant } from "@/components/ProductCard"
+import { COLOR_MAP } from "@/components/ProductCard"
+
+// ── Color helpers ───────────────────────────────────────────────────────────
+
+/** Extract readable label from raw PIM value, e.g. "H440:M3-1 Violett" → "Violett" */
+function extractColorLabel(raw: string): string {
+  const parts = raw.trim().split(/\s+/)
+  return parts[parts.length - 1] || raw
+}
+
+/** Map extracted label to a hex color, with fallback */
+function getColorHex(label: string): string {
+  const key = label.toLowerCase()
+  if (COLOR_MAP[key]) return COLOR_MAP[key]
+  for (const [k, v] of Object.entries(COLOR_MAP)) {
+    if (key.includes(k)) return v
+  }
+  return "#d1d5db"
+}
 
 // ── Size normalization (frontend) ──────────────────────────────────────────
 
@@ -125,24 +144,35 @@ export function VariantSelector({
       {/* Color selector */}
       {hasColors && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-2">
-            Färg{selectedColor ? `: ${selectedColor}` : ""}
+          <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
+            Färg{selectedColor ? `: ${extractColorLabel(selectedColor)}` : ""}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {allColors.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => onColorChange(selectedColor === color ? null : color)}
-                className={`px-3 py-1.5 rounded-lg border text-sm transition ${
-                  selectedColor === color
-                    ? "border-stone-950 bg-stone-950 text-white"
-                    : "border-stone-200 text-stone-700 hover:border-stone-400"
-                }`}
-              >
-                {color}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-4">
+            {allColors.map((color) => {
+              const label = extractColorLabel(color)
+              const hex = getColorHex(label)
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => onColorChange(selectedColor === color ? null : color)}
+                  title={label}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <span
+                    className={`w-8 h-8 rounded-full border-2 transition-all block ${
+                      selectedColor === color
+                        ? "border-stone-950 ring-2 ring-offset-2 ring-stone-800"
+                        : "border-stone-200 hover:border-stone-500"
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                  <span className="text-[10px] text-stone-500 leading-tight text-center" style={{ maxWidth: 48 }}>
+                    {label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

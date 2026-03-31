@@ -1,0 +1,167 @@
+=== SYSTEM DIAGNOS ===
+Wed Mar 18 03:22:48 PM UTC 2026
+
+OS:
+Linux srv1309734 6.8.0-101-generic #101-Ubuntu SMP PREEMPT_DYNAMIC Mon Feb  9 10:15:05 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+
+TOOLS:
+/usr/bin/git
+git OK
+/usr/bin/node
+node OK
+/usr/bin/npm
+npm OK
+/usr/bin/python3
+python3 OK
+/usr/bin/docker
+docker OK
+
+PORTAR:
+COMMAND       PID            USER   FD   TYPE   DEVICE SIZE/OFF NODE NAME
+systemd         1            root  204u  IPv4     6358      0t0  TCP *:22 (LISTEN)
+systemd         1            root  205u  IPv6     6360      0t0  TCP *:22 (LISTEN)
+systemd-r     683 systemd-resolve   15u  IPv4     5046      0t0  TCP _localdnsstub:53 (LISTEN)
+systemd-r     683 systemd-resolve   17u  IPv4     5048      0t0  TCP _localdnsproxy:53 (LISTEN)
+memcached     766        memcache   26u  IPv4     8273      0t0  TCP localhost:11211 (LISTEN)
+memcached     766        memcache   27u  IPv6     8274      0t0  TCP localhost:11211 (LISTEN)
+php-fpm7.     775            root   10u  IPv4     8704      0t0  TCP localhost:11000 (LISTEN)
+php-fpm7.     776            root   10u  IPv4     7829      0t0  TCP localhost:12000 (LISTEN)
+php-fpm7.     777            root   10u  IPv4     8573      0t0  TCP localhost:13000 (LISTEN)
+php-fpm7.     778            root   10u  IPv4     8654      0t0  TCP localhost:14000 (LISTEN)
+php-fpm8.     779            root   11u  IPv4     8673      0t0  TCP localhost:15000 (LISTEN)
+php-fpm8.     781            root   11u  IPv4     8633      0t0  TCP localhost:16000 (LISTEN)
+php-fpm8.     782            root   11u  IPv4     7875      0t0  TCP localhost:17000 (LISTEN)
+php-fpm8.     783            root   11u  IPv4     8696      0t0  TCP localhost:18000 (LISTEN)
+php-fpm8.     784            root   11u  IPv4     8685      0t0  TCP localhost:19000 (LISTEN)
+php-fpm8.     785            root   11u  IPv4     7888      0t0  TCP localhost:20000 (LISTEN)
+redis-ser     793           redis    6u  IPv4     8478      0t0  TCP localhost:6379 (LISTEN)
+redis-ser     793           redis    7u  IPv6     8479      0t0  TCP localhost:6379 (LISTEN)
+varnishd      833         varnish    3u  IPv4     6985      0t0  TCP *:6081 (LISTEN)
+varnishd      833         varnish    5u  IPv6     6986      0t0  TCP *:6081 (LISTEN)
+varnishd      833         varnish    9u  IPv6     9204      0t0  TCP localhost:42817 (LISTEN)
+varnishd      833         varnish   10u  IPv4     9205      0t0  TCP localhost:46051 (LISTEN)
+nginx         852            root    6u  IPv4     7012      0t0  TCP *:8443 (LISTEN)
+nginx         852            root    7u  IPv6     7013      0t0  TCP *:8443 (LISTEN)
+nginx         859             clp    6u  IPv4     7012      0t0  TCP *:8443 (LISTEN)
+nginx         859             clp    7u  IPv6     7013      0t0  TCP *:8443 (LISTEN)
+nginx         860             clp    6u  IPv4     7012      0t0  TCP *:8443 (LISTEN)
+nginx         860             clp    7u  IPv6     7013      0t0  TCP *:8443 (LISTEN)
+mysqld       1038           mysql   18u  IPv6    10975      0t0  TCP *:33060 (LISTEN)
+mysqld       1038           mysql   20u  IPv6    11443      0t0  TCP *:3306 (LISTEN)
+cache-mai    1330          vcache    3u  IPv4     6985      0t0  TCP *:6081 (LISTEN)
+cache-mai    1330          vcache    5u  IPv6     6986      0t0  TCP *:6081 (LISTEN)
+master       1675            root   13u  IPv4     9320      0t0  TCP *:25 (LISTEN)
+master       1675            root   14u  IPv6     9321      0t0  TCP *:25 (LISTEN)
+docker-pr    3306            root    8u  IPv4    15895      0t0  TCP *:26379 (LISTEN)
+docker-pr    3321            root    8u  IPv6    15896      0t0  TCP *:26379 (LISTEN)
+docker-pr    3466            root    8u  IPv4    16438      0t0  TCP *:9000 (LISTEN)
+docker-pr    3474            root    8u  IPv6    16439      0t0  TCP *:9000 (LISTEN)
+docker-pr    3518            root    8u  IPv4    16743      0t0  TCP *:26380 (LISTEN)
+docker-pr    3523            root    8u  IPv6    16744      0t0  TCP *:26380 (LISTEN)
+docker-pr    3548            root    8u  IPv4    16796      0t0  TCP *:26381 (LISTEN)
+docker-pr    3558            root    8u  IPv6    16797      0t0  TCP *:26381 (LISTEN)
+sshd         4645            root    3u  IPv4     6358      0t0  TCP *:22 (LISTEN)
+sshd         4645            root    4u  IPv6     6360      0t0  TCP *:22 (LISTEN)
+python3    810288            root    3u  IPv4  3366871      0t0  TCP localhost:9010 (LISTEN)
+proftpd   1235716         proftpd    0u  IPv4 22346425      0t0  TCP *:21 (LISTEN)
+nginx     2185915            root   10u  IPv4 26269879      0t0  TCP *:80 (LISTEN)
+nginx     2185915            root   11u  IPv6 26269880      0t0  TCP *:80 (LISTEN)
+nginx     2185915            root   12u  IPv4 26269881      0t0  TCP *:443 (LISTEN)
+nginx     2185915            root   13u  IPv6 26269882      0t0  TCP *:443 (LISTEN)
+nginx     2330886            root   10u  IPv4 26269879      0t0  TCP *:80 (LISTEN)
+nginx     2330886            root   11u  IPv6 26269880      0t0  TCP *:80 (LISTEN)
+nginx     2330886            root   12u  IPv4 26269881      0t0  TCP *:443 (LISTEN)
+nginx     2330886            root   13u  IPv6 26269882      0t0  TCP *:443 (LISTEN)
+nginx     2330887            root   10u  IPv4 26269879      0t0  TCP *:80 (LISTEN)
+nginx     2330887            root   11u  IPv6 26269880      0t0  TCP *:80 (LISTEN)
+nginx     2330887            root   12u  IPv4 26269881      0t0  TCP *:443 (LISTEN)
+nginx     2330887            root   13u  IPv6 26269882      0t0  TCP *:443 (LISTEN)
+docker-pr 2954876            root    8u  IPv4 29406188      0t0  TCP localhost:9100 (LISTEN)
+
+DOCKER:
+CONTAINER ID   IMAGE                             COMMAND                  CREATED          STATUS                    PORTS                                                       NAMES
+96a2724ab160   uniforma-api                      "/app/scripts/docker…"   21 minutes ago   Up 21 minutes (healthy)   127.0.0.1:9100->8000/tcp                                    uniforma-api
+11f86822e1b3   postgres:15                       "docker-entrypoint.s…"   23 minutes ago   Up 23 minutes (healthy)   5432/tcp                                                    uniforma-db
+d5c83906c3c9   redis:7-alpine                    "docker-entrypoint.s…"   2 days ago       Up 2 days (healthy)       6379/tcp                                                    uniforma-redis
+4706d1ca4895   supt-backend-api                  "uvicorn app.main:ap…"   6 days ago       Up 2 days                 0.0.0.0:9000->8000/tcp, [::]:9000->8000/tcp                 supt-backend-api-1
+63779acd4554   supt-backend-ai-pipeline-worker   "python -m app.worke…"   9 days ago       Up 2 days                                                                             supt-backend-ai-pipeline-worker-1
+0203b08dd9a5   supt-backend-strategy-worker      "python -m app.worke…"   9 days ago       Up 2 days                                                                             supt-backend-strategy-worker-1
+e9626873da3d   supt-backend-learning-worker      "python -m app.worke…"   9 days ago       Up 2 days                                                                             supt-backend-learning-worker-1
+4bd7b869442b   supt-backend-ai-worker            "python -m app.worke…"   9 days ago       Up 2 days                                                                             supt-backend-ai-worker-1
+7dc5975827af   supt-backend-email-worker         "python -m app.worke…"   9 days ago       Up 2 days                                                                             supt-backend-email-worker-1
+a2f43578d632   supt-backend-analytics-worker     "python -m app.worke…"   9 days ago       Up 2 days                                                                             supt-backend-analytics-worker-1
+efd845b5071d   redis:7-alpine                    "docker-entrypoint.s…"   9 days ago       Up 2 days (healthy)       6379/tcp, 0.0.0.0:26379->26379/tcp, [::]:26379->26379/tcp   supt-backend-sentinel-1-1
+e5357667ad12   redis:7-alpine                    "docker-entrypoint.s…"   9 days ago       Up 2 days (healthy)       6379/tcp                                                    supt-backend-redis-replica-1-1
+8c785ba34839   redis:7-alpine                    "docker-entrypoint.s…"   9 days ago       Up 2 days (healthy)       6379/tcp, 0.0.0.0:26381->26379/tcp, [::]:26381->26379/tcp   supt-backend-sentinel-3-1
+e8a6b0470cfa   redis:7-alpine                    "docker-entrypoint.s…"   9 days ago       Up 2 days (healthy)       6379/tcp, 0.0.0.0:26380->26379/tcp, [::]:26380->26379/tcp   supt-backend-sentinel-2-1
+1b0212a10abb   redis:7-alpine                    "docker-entrypoint.s…"   9 days ago       Up 2 days (healthy)       6379/tcp                                                    supt-backend-redis-replica-2-1
+b699ef219451   postgres:15                       "docker-entrypoint.s…"   9 days ago       Up 2 days (healthy)       5432/tcp                                                    supt-backend-db-1
+dc5af3179d33   redis:7-alpine                    "docker-entrypoint.s…"   9 days ago       Up 2 days (healthy)       6379/tcp                                                    supt-backend-redis-primary-1
+
+STRUKTUR:
+/opt/uniforma
+/opt/uniforma/storage
+/opt/uniforma/storage/uploads
+/opt/uniforma/storage/images
+/opt/uniforma/backend
+/opt/uniforma/backend/storage
+/opt/uniforma/backend/data
+/opt/uniforma/backend/uploads
+/opt/uniforma/backend/.claude
+/opt/uniforma/backend/scripts
+/opt/uniforma/backend/app
+/opt/uniforma/deploy
+/opt/uniforma/deploy/logs
+/opt/uniforma/deploy/webhook
+/opt/uniforma/deploy/nginx
+/opt/uniforma/data
+/opt/uniforma/data/csv
+/opt/uniforma/data/images
+/opt/uniforma/data/hejco
+/opt/uniforma/reports
+/opt/uniforma/admin-ui
+/opt/uniforma/admin-ui/components
+/opt/uniforma/admin-ui/lib
+/opt/uniforma/admin-ui/app
+/opt/uniforma/admin-ui/types
+/opt/uniforma/admin-ui/hooks
+/opt/uniforma/.claude
+/opt/uniforma/admin
+/opt/uniforma/admin/node_modules
+/opt/uniforma/admin/components
+/opt/uniforma/admin/.claude
+/opt/uniforma/admin/lib
+/opt/uniforma/admin/public
+/opt/uniforma/admin/app
+/opt/uniforma/admin/types
+/opt/uniforma/admin/.next
+/opt/uniforma/admin/hooks
+/opt/uniforma/logs
+/opt/uniforma/scripts
+/opt/uniforma/backups
+/opt/uniforma/backups/images
+/opt/uniforma/app
+/opt/uniforma/app/services
+/opt/uniforma/app/core
+/opt/uniforma/app/repositories
+/opt/uniforma/app/api
+/opt/uniforma/app/__pycache__
+/opt/uniforma/app/db
+/opt/uniforma/app/models
+/opt/uniforma/app/schemas
+/opt/uniforma/.git
+/opt/uniforma/.git/info
+/opt/uniforma/.git/branches
+/opt/uniforma/.git/refs
+/opt/uniforma/.git/logs
+/opt/uniforma/.git/objects
+/opt/uniforma/.git/hooks
+/opt/uniforma/tools
+/opt/uniforma/frontend
+/opt/uniforma/frontend/node_modules
+/opt/uniforma/frontend/components
+/opt/uniforma/frontend/.claude
+/opt/uniforma/frontend/lib
+/opt/uniforma/frontend/public
+/opt/uniforma/frontend/app
+/opt/uniforma/frontend/.next

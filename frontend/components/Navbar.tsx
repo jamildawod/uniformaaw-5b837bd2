@@ -2,9 +2,9 @@ import Link from "next/link";
 
 const navItems = [
   { label: "Startsida", href: "/" },
-  { label: "Om oss", href: "/om-oss" },
-  { label: "Superdeal", href: "/superdeal" },
   { label: "Storleksguide", href: "/storleksguide" },
+  { label: "Superdeal", href: "/superdeal" },
+  { label: "Om oss", href: "/om-oss" },
 ];
 
 export function Navbar() {

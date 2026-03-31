@@ -2,6 +2,17 @@ import uuid
 
 from app.models.product_image import ProductImage as _ProductImage
 
+# Maps root category slug → the sector slug used in ?sector= product filtering.
+# These correspond exactly to _SECTOR_KEYWORDS keys in product_repository.py.
+_CATEGORY_SECTOR_MAP: dict[str, str] = {
+    "dental": "dental",
+    "djursjukvard": "djursjukvard",
+    "kok": "kok",
+    "skonhet-halsa": "beauty",
+    "stad-service": "stad",
+    "vard-omsorg": "vard",
+}
+
 
 def _resolve_product_image_url(img: "_ProductImage") -> str | None:
     """Mirror ProductImageRead.url resolution logic for plain ORM instances."""
@@ -35,8 +46,12 @@ from app.repositories.product_repository import ProductRepository
 from app.schemas.category import CategoryListItem
 from app.schemas.product import (
     AdminImageCreateRequest,
+    AdminImageReorderRequest,
     AdminProductRead,
     AdminOverridePatchRequest,
+    AdminProductUpdateRequest,
+    AdminVariantUpdateRequest,
+    AutocompleteItem,
     FiltersRead,
     ProductRead,
     ProductVariantRead,
@@ -69,18 +84,71 @@ class ProductReadService:
         limit: int = 50,
         offset: int = 0,
         category_slug: str | None = None,
+        sector_slug: str | None = None,
         color: str | None = None,
         size: str | None = None,
+        search: str | None = None,
     ) -> list[ProductRead]:
         products = await self.product_repository.list_active_products(
             limit=limit,
             offset=offset,
             category_slug=category_slug,
+            sector_slug=sector_slug,
             color=color,
             size=size,
+            search=search,
         )
         override_map = await self.admin_override_repository.list_by_product_ids([product.id for product in products])
-        return [self._merge_product(product, override_map.get(product.id, [])) for product in products]
+        results: list[ProductRead] = []
+        for product in products:
+            try:
+                results.append(self._merge_product(product, override_map.get(product.id, [])))
+            except Exception as exc:
+                self.logger.warning("Skipped product %s during serialization: %s", product.id, exc)
+        return results
+
+    async def list_public_products_by_ids(
+        self,
+        product_ids: list[str],
+    ) -> list[ProductRead]:
+        if not product_ids:
+            return []
+
+        ordered_ids: list[uuid.UUID] = []
+        seen: set[uuid.UUID] = set()
+        for product_id in product_ids:
+            try:
+                parsed_id = uuid.UUID(str(product_id))
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if parsed_id in seen:
+                continue
+            seen.add(parsed_id)
+            ordered_ids.append(parsed_id)
+
+        if not ordered_ids:
+            return []
+
+        products = await self.product_repository.list_active_products_by_ids(ordered_ids)
+        override_map = await self.admin_override_repository.list_by_product_ids([product.id for product in products])
+        merged_products = [
+            self._merge_product(product, override_map.get(product.id, []))
+            for product in products
+        ]
+        position = {product_id: index for index, product_id in enumerate(ordered_ids)}
+        merged_products.sort(key=lambda product: position.get(product.id, len(position)))
+        return merged_products
+
+    async def autocomplete(self, q: str, limit: int = 8) -> list[AutocompleteItem]:
+        q = (q or "").strip()
+        if not q:
+            return []
+        try:
+            rows = await self.product_repository.list_autocomplete(q=q, limit=limit)
+            return [AutocompleteItem.model_validate(row) for row in rows]
+        except Exception as exc:
+            self.logger.error("autocomplete failed for q=%r: %s", q, exc)
+            return []
 
     async def get_filters(self) -> FiltersRead:
         if self.cache_service is not None:
@@ -132,16 +200,48 @@ class ProductReadService:
             for category in categories
         ]
 
-    async def list_root_categories(self) -> list[CategoryListItem]:
-        categories = await self.product_repository.list_root_categories()
+    async def list_sector_categories(self) -> list[CategoryListItem]:
+        categories = await self.product_repository.list_sector_categories()
+        null_ids = [c.id for c in categories if not getattr(c, "image", None)]
+        auto_images: dict[int, str] = {}
+        if null_ids:
+            img_map = await self.product_repository.get_primary_images_for_categories(null_ids)
+            for cat_id, img in img_map.items():
+                url = _resolve_product_image_url(img)
+                if url:
+                    auto_images[cat_id] = url
         return [
             CategoryListItem.model_validate(
                 {
                     "id": category.id,
                     "name": category.name,
                     "slug": category.slug,
-                    "image": getattr(category, "image", None),
+                    "image": getattr(category, "image", None) or auto_images.get(category.id),
                     "parent_id": category.parent_id,
+                }
+            )
+            for category in categories
+        ]
+
+    async def list_root_categories(self) -> list[CategoryListItem]:
+        categories = await self.product_repository.list_root_categories()
+        null_ids = [c.id for c in categories if not getattr(c, "image", None)]
+        auto_images: dict[int, str] = {}
+        if null_ids:
+            img_map = await self.product_repository.get_primary_images_for_categories(null_ids)
+            for cat_id, img in img_map.items():
+                url = _resolve_product_image_url(img)
+                if url:
+                    auto_images[cat_id] = url
+        return [
+            CategoryListItem.model_validate(
+                {
+                    "id": category.id,
+                    "name": category.name,
+                    "slug": category.slug,
+                    "image": getattr(category, "image", None) or auto_images.get(category.id),
+                    "parent_id": category.parent_id,
+                    "sector_slug": _CATEGORY_SECTOR_MAP.get(category.slug),
                 }
             )
             for category in categories
@@ -160,8 +260,23 @@ class ProductReadService:
             return None
         return [ProductVariantRead.model_validate(variant) for variant in product.variants if variant.is_active]
 
-    async def list_admin_products(self, limit: int = 50, offset: int = 0) -> list[AdminProductRead]:
-        products = await self.product_repository.list_products(limit=limit, offset=offset)
+    async def list_admin_products(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        search: str | None = None,
+        category_id: int | None = None,
+        is_active: bool | None = None,
+        has_override: bool | None = None,
+    ) -> list[AdminProductRead]:
+        products = await self.product_repository.list_products(
+            limit=limit,
+            offset=offset,
+            search=search,
+            category_id=category_id,
+            is_active=is_active,
+            has_override=has_override,
+        )
         override_map = await self.admin_override_repository.list_by_product_ids([product.id for product in products])
         return [self._merge_admin_product(product, override_map.get(product.id, [])) for product in products]
 
@@ -206,6 +321,106 @@ class ProductReadService:
         override_map = await self.admin_override_repository.list_by_product_ids([product.id])
         return self._merge_admin_product(product, override_map.get(product.id, []))
 
+    async def update_admin_product(
+        self,
+        product_id: uuid.UUID,
+        payload: AdminProductUpdateRequest,
+    ) -> AdminProductRead | None:
+        product = await self.product_repository.get_product_by_id(product_id)
+        if product is None:
+            return None
+
+        if payload.category_id is not None:
+            category = await self.product_repository.get_category_by_id(payload.category_id)
+            if category is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Category not found.",
+                )
+
+        product.name = payload.name
+        product.description = payload.description
+        product.category_id = payload.category_id
+        product.is_active = payload.is_active
+
+        await self.admin_override_repository.delete_by_product_and_fields(
+            product_id,
+            ["name", "description"],
+        )
+        self._apply_product_price(product, payload.price)
+        await self.product_repository.flush()
+        return await self._refresh_admin_product(product_id)
+
+    async def update_admin_variant(
+        self,
+        product_id: uuid.UUID,
+        variant_id: int,
+        payload: AdminVariantUpdateRequest,
+    ) -> AdminProductRead | None:
+        product = await self.product_repository.get_product_by_id(product_id)
+        if product is None:
+            return None
+
+        variant = self._get_variant_for_product(product, variant_id)
+        if variant is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Variant not found.",
+            )
+
+        variant.sku = payload.sku
+        variant.ean = payload.ean
+        variant.color = payload.color
+        variant.size = payload.size
+        variant.price = payload.price
+        if "currency" in payload.model_fields_set:
+            variant.currency = payload.currency
+        variant.stock_quantity = payload.stock_quantity
+        variant.is_active = payload.is_active
+
+        try:
+            await self.product_repository.flush()
+        except IntegrityError as exc:
+            session = self.product_repository.session
+            await session.rollback()
+            self.logger.warning(
+                "Rejected variant update for product %s variant %s",
+                product_id,
+                variant_id,
+                extra={
+                    "event": "admin_product_variant_integrity_error",
+                    "product_id": str(product_id),
+                    "variant_id": variant_id,
+                    "sku": payload.sku,
+                    "error": str(exc),
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Variant update violates a uniqueness constraint.",
+            ) from exc
+
+        return await self._refresh_admin_product(product_id)
+
+    async def delete_admin_variant(
+        self,
+        product_id: uuid.UUID,
+        variant_id: int,
+    ) -> AdminProductRead | None:
+        product = await self.product_repository.get_product_by_id(product_id)
+        if product is None:
+            return None
+
+        variant = self._get_variant_for_product(product, variant_id)
+        if variant is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Variant not found.",
+            )
+
+        await self.product_repository.delete_variant(variant)
+        return await self._refresh_admin_product(product_id)
+
     async def add_product_image(
         self,
         product_id: uuid.UUID,
@@ -246,6 +461,88 @@ class ProductReadService:
         override_map = await self.admin_override_repository.list_by_product_ids([product_id])
         return self._merge_admin_product(refreshed, override_map.get(product_id, []))
 
+    async def set_primary_product_image(
+        self,
+        product_id: uuid.UUID,
+        image_id: int,
+    ) -> AdminProductRead | None:
+        product = await self.product_repository.get_product_by_id(product_id)
+        if product is None:
+            return None
+
+        image = self._get_image_for_product(product, image_id)
+        if image is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Image not found.",
+            )
+
+        for candidate in product.images:
+            candidate.is_primary = candidate.id == image_id
+
+        await self.product_repository.flush()
+        return await self._refresh_admin_product(product_id)
+
+    async def delete_product_image(
+        self,
+        product_id: uuid.UUID,
+        image_id: int,
+    ) -> AdminProductRead | None:
+        product = await self.product_repository.get_product_by_id(product_id)
+        if product is None:
+            return None
+
+        image = self._get_image_for_product(product, image_id)
+        if image is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Image not found.",
+            )
+
+        was_primary = image.is_primary
+        remaining_images = [candidate for candidate in product.images if candidate.id != image_id]
+        await self.product_repository.delete_image(image)
+
+        if remaining_images and (was_primary or not any(candidate.is_primary for candidate in remaining_images)):
+            for candidate in remaining_images:
+                candidate.is_primary = False
+            min(remaining_images, key=lambda candidate: (candidate.sort_order, candidate.id)).is_primary = True
+
+        await self.product_repository.flush()
+        return await self._refresh_admin_product(product_id)
+
+    async def reorder_product_images(
+        self,
+        product_id: uuid.UUID,
+        payload: AdminImageReorderRequest,
+    ) -> AdminProductRead | None:
+        product = await self.product_repository.get_product_by_id(product_id)
+        if product is None:
+            return None
+
+        if len(payload.image_ids) != len(set(payload.image_ids)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="image_ids must not contain duplicates.",
+            )
+
+        product_image_ids = [image.id for image in product.images]
+        if set(payload.image_ids) != set(product_image_ids):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="image_ids must match the product's images exactly.",
+            )
+
+        image_map = {image.id: image for image in product.images}
+        for sort_order, image_id in enumerate(payload.image_ids):
+            image_map[image_id].sort_order = sort_order
+
+        if product.images and not any(image.is_primary for image in product.images):
+            image_map[payload.image_ids[0]].is_primary = True
+
+        await self.product_repository.flush()
+        return await self._refresh_admin_product(product_id)
+
     def _merge_product(self, product: Product, overrides: list[AdminOverride]) -> ProductRead:
         merged = ProductRead.model_validate(product).model_dump()
         applied_overrides = self._filter_overrides(overrides)
@@ -257,6 +554,7 @@ class ProductReadService:
     def _merge_admin_product(self, product: Product, overrides: list[AdminOverride]) -> AdminProductRead:
         merged = self._merge_product(product, overrides).model_dump()
         merged["applied_overrides"] = self._filter_overrides(overrides)
+        merged["sectors"] = [sector.name for sector in (product.sectors or [])]
         return AdminProductRead.model_validate(merged)
 
     def _filter_overrides(
@@ -274,3 +572,44 @@ class ProductReadService:
                 continue
             filtered[override.field_name] = override.override_value
         return filtered
+
+    def _apply_product_price(self, product: Product, price) -> None:
+        variants = [variant for variant in product.variants if variant.deleted_at is None]
+        if not variants:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Product price is derived from variants. Add or update a variant instead.",
+            )
+
+        distinct_prices = {variant.price for variant in variants}
+        if len(variants) > 1 and len(distinct_prices) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Product has multiple variant prices. Update variants individually.",
+            )
+
+        for variant in variants:
+            variant.price = price
+
+    def _get_variant_for_product(self, product: Product, variant_id: int):
+        for variant in product.variants:
+            if variant.id == variant_id:
+                return variant
+        return None
+
+    def _get_image_for_product(self, product: Product, image_id: int):
+        for image in product.images:
+            if image.id == image_id:
+                return image
+        return None
+
+    async def _refresh_admin_product(self, product_id: uuid.UUID) -> AdminProductRead:
+        refreshed = await self.product_repository.get_product_by_id(product_id)
+        if refreshed is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Product not found.",
+            )
+
+        override_map = await self.admin_override_repository.list_by_product_ids([product_id])
+        return self._merge_admin_product(refreshed, override_map.get(product_id, []))

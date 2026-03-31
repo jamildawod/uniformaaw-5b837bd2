@@ -1,0 +1,109 @@
+=== UNIFORMA STATUS ===
+Tid: Wed Mar 18 03:16:51 PM UTC 2026
+Backend: /opt/uniforma/backend
+Frontend: /opt/uniforma/frontend
+
+Git:
+ M .gitignore
+ M Dockerfile
+ D FastAPI
+ D Next.js
+ M admin/app/admin/page.tsx
+ M admin/app/admin/settings/integrations/page.tsx
+ M admin/components/admin/hejco-integration-form.tsx
+ M admin/components/admin/sync-monitor-panel.tsx
+ M admin/lib/api/client.ts
+ M admin/lib/api/endpoints.ts
+ M admin/lib/api/server.ts
+ M admin/lib/types/pim.ts
+ M app/api/deps.py
+ M app/api/v1/endpoints/admin_products.py
+ M app/api/v1/endpoints/auth.py
+ M app/api/v1/endpoints/public_products.py
+ M app/api/v1/router.py
+ M app/core/config.py
+ M app/core/security.py
+ M app/main.py
+ M app/models/__init__.py
+ M app/models/category.py
+ M app/models/product.py
+ M app/models/product_variant.py
+ M app/models/sync_run.py
+ M app/repositories/intelligence_repository.py
+ M app/repositories/product_repository.py
+ M app/schemas/intelligence.py
+ M app/schemas/product.py
+ M app/schemas/sync.py
+ M app/services/ftp_image_service.py
+ M app/services/pim_ingestion_service.py
+ M app/services/pim_sync_service.py
+ M app/services/product_read_service.py
+ M backend/app/main.py
+ D backend/scripts/import_hejco/__init__.py
+ D backend/scripts/import_hejco/ftp_download.py
+ D backend/scripts/import_hejco/import_products.py
+ D backend/scripts/import_hejco/match_images.py
+ D backend/scripts/import_hejco/parse_products.py
+ D backend/scripts/import_hejco/sync_stock.py
+ D backend/scripts/run_hejco_cron.sh
+ D backend/scripts/run_hejco_sync.py
+ M deploy/nginx/uniforma.livosys.se.conf
+ D filnamn
+ M frontend/app/globals.css
+ M frontend/app/layout.tsx
+ M frontend/app/page.tsx
+ M frontend/next.config.mjs
+ D frontend/next.config.ts
+ M frontend/package-lock.json
+ M frontend/package.json
+ M frontend/postcss.config.mjs
+ M frontend/tsconfig.json
+ M requirements.txt
+?? app/api/v1/endpoints/categories.py
+?? app/core/size.py
+?? app/db/migrations/versions/20260317_000005_add_rich_product_fields.py
+?? app/models/ingestion_log.py
+?? app/models/supplier.py
+?? app/schemas/category.py
+?? app/services/cache_service.py
+?? app/services/image_service.py
+?? app/services/rate_limit_service.py
+?? backend/scripts/backup_uploads.sh
+?? backend/scripts/cleanup_variant_sizes.py
+?? backend/scripts/fix_admin.py
+?? backend/scripts/import_catalog/
+?? backend/scripts/run_catalog_sync.py
+?? backend/scripts/run_catalog_sync.sh
+?? backend/uploads-backup.tar.gz
+?? backups/
+?? frontend/app/kontakt/
+?? frontend/app/om-oss/
+?? frontend/app/product/
+?? frontend/app/shop/
+?? frontend/app/storleksguide/
+?? frontend/app/superdeal/
+?? frontend/components/
+?? frontend/ecosystem.config.js
+?? frontend/lib/
+?? frontend/public/hero-dental.png
+?? frontend/public/hero-djursjukvard.png
+?? frontend/public/hero-kok.png
+?? frontend/public/hero-skonhet.png
+?? frontend/public/hero-stad.png
+?? frontend/public/hero-vard.png
+?? frontend/public/hero.svg
+?? frontend/public/logo.svg
+?? frontend/public/placeholder.jpg
+?? frontend/tailwind.config.ts
+?? reports/
+?? scripts/backup_images.sh
+?? tools/
+
+Node/Python:
+/usr/bin/node
+v20.20.1
+/usr/bin/python3
+Python 3.12.3
+
+Portar:
+inga portar

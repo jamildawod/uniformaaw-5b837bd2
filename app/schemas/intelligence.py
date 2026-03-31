@@ -36,6 +36,7 @@ class DataQualityResponse(BaseModel):
 
 class SyncRun(BaseModel):
     id: int
+    supplier: str | None = None
     started_at: datetime
     finished_at: datetime | None = None
     status: Literal["success", "failed", "running"]
@@ -45,6 +46,10 @@ class SyncRun(BaseModel):
     variants_created: int = 0
     variants_updated: int = 0
     images_synced: int = 0
+    rows_processed: int = 0
+    rows_created: int = 0
+    rows_updated: int = 0
+    rows_failed: int = 0
     error_message: str | None = None
 
 

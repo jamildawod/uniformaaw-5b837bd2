@@ -26,11 +26,15 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_minutes: int = 10080
     jwt_secret_key: str = Field(..., min_length=32)
     jwt_refresh_secret_key: str = Field(..., min_length=32)
+    admin_auth_cookie_name: str = "uniforma_admin_access_token"
+    admin_refresh_cookie_name: str = "uniforma_admin_refresh_token"
+    admin_auth_cookie_domain: str = ".livosys.se"
+    admin_auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
     default_admin_email: str = "admin@uniforma.app"
     default_admin_password: str = Field(..., min_length=12)
 
-    pim_csv_path: Path = Path("/opt/uniforma/data/PIMexport_Hejco_sv-SE.csv")
+    pim_csv_path: Path = Path("/opt/uniforma/data/PIMexport_catalog_sv-SE.csv")
     pim_csv_delimiter: str = ";"
     pim_batch_size: int = 200
     pim_sync_enabled: bool = True
@@ -45,7 +49,19 @@ class Settings(BaseSettings):
     ftp_remote_base_path: str = "/"
     ftp_timeout_seconds: int = 30
 
+    redis_url: str | None = None
+    filters_cache_ttl_seconds: int = 300
+    auth_login_rate_limit_attempts: int = 5
+    auth_login_rate_limit_window_seconds: int = 300
+    default_supplier_code: str = "hejco"
+    default_supplier_name: str = "Hejco"
+
     storage_root: Path = Path("/opt/uniforma/storage")
+    api_base_url: str = ""  # e.g. http://api.uniforma.livosys.se
+    image_download_timeout_seconds: int = 30
+    image_max_width: int = 1600
+    image_max_height: int = 1600
+    image_webp_quality: int = 82
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -74,6 +90,26 @@ class Settings(BaseSettings):
     @property
     def image_storage_root(self) -> Path:
         return self.storage_root / "images"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def uploads_root(self) -> Path:
+        return self.storage_root / "uploads"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def product_upload_root(self) -> Path:
+        return self.uploads_root / "products"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def admin_auth_cookie_secure(self) -> bool:
+        return self.app_env != "development"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def admin_auth_cookie_domain_effective(self) -> str | None:
+        return None if self.app_env == "development" else self.admin_auth_cookie_domain
 
 
 @lru_cache

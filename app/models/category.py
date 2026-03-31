@@ -10,6 +10,7 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    image: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"),
         nullable=True,
@@ -21,3 +22,8 @@ class Category(Base):
     )
     children: Mapped[list["Category"]] = relationship(back_populates="parent")
     products: Mapped[list["Product"]] = relationship(back_populates="category")
+    sector_products: Mapped[list["Product"]] = relationship(
+        secondary="product_sectors",
+        back_populates="sectors",
+        lazy="selectin",
+    )

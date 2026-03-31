@@ -10,8 +10,8 @@ export function Footer() {
             Arbetskläder och profilplagg för professionella miljöer.
           </p>
           <div className="mt-4 space-y-1.5 text-sm text-gray-600">
-            <p>E-post: info@uniforma.se</p>
-            <p>Telefon: 070-000 00 00</p>
+            <p>E-post: hej@uniforma.se</p>
+            <p>Telefon: +46 703 494 913</p>
             <p>Adress: Sverige</p>
           </div>
         </div>

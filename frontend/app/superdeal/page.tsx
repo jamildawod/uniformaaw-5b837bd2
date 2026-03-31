@@ -1,19 +1,7 @@
 import { Tag } from "lucide-react";
-import { ProductCard, type StoreProduct } from "@/components/ProductCard";
-import { API_URL } from "@/lib/api";
 
-async function getFeaturedProducts(): Promise<StoreProduct[]> {
-  try {
-    const res = await fetch(`${API_URL}/products?limit=48`, {
-      next: { revalidate: 120 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-  } catch {
-    return [];
-  }
-}
+import { SuperDealCard } from "@/components/SuperDealCard";
+import { fetchSuperDeals } from "@/lib/api";
 
 export const metadata = {
   title: "Superdeal – Uniforma",
@@ -21,7 +9,7 @@ export const metadata = {
 };
 
 export default async function SuperdealPage() {
-  const products = await getFeaturedProducts();
+  const deals = await fetchSuperDeals();
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-950">
@@ -73,12 +61,12 @@ export default async function SuperdealPage() {
 
       <main className="mx-auto max-w-[1440px] px-6 py-10 lg:px-10 xl:px-12">
 
-        {products.length > 0 ? (
+        {deals.length > 0 ? (
           <>
             <div className="mb-6 flex items-center justify-between">
               <p className="text-sm text-stone-500">
-                <span className="font-semibold text-stone-950">{products.length}</span>{" "}
-                {products.length === 1 ? "produkt" : "produkter"}
+                <span className="font-semibold text-stone-950">{deals.length}</span>{" "}
+                {deals.length === 1 ? "erbjudande" : "erbjudanden"}
               </p>
               <a
                 href="/shop"
@@ -87,9 +75,9 @@ export default async function SuperdealPage() {
                 Visa hela katalogen →
               </a>
             </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {deals.map((deal) => (
+                <SuperDealCard key={deal.id} deal={deal} />
               ))}
             </div>
           </>
@@ -97,10 +85,10 @@ export default async function SuperdealPage() {
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-white px-8 py-20 text-center">
             <Tag className="mx-auto mb-4 h-10 w-10 text-stone-300" />
             <h2 className="text-lg font-semibold text-stone-950">
-              Inga erbjudanden just nu
+              Inga aktiva erbjudanden just nu
             </h2>
             <p className="mt-2 text-sm text-stone-500">
-              Kontakta oss för att höra om aktuella kampanjer och volympriser.
+              Det finns inga super deals som matchar aktiv PIM-status just nu.
             </p>
             <a
               href="/kontakt"
@@ -111,8 +99,7 @@ export default async function SuperdealPage() {
           </div>
         )}
 
-        {/* CTA bottom */}
-        {products.length > 0 && (
+        {deals.length > 0 && (
           <div className="mt-12 rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-stone-950">
               Vill du beställa för din organisation?

@@ -163,6 +163,11 @@ class IntelligenceRepository:
                 """
                 SELECT
                     id,
+                    (
+                        SELECT s.name
+                        FROM suppliers s
+                        WHERE s.id = sync_runs.supplier_id
+                    ) AS supplier,
                     started_at,
                     finished_at,
                     status,
@@ -172,6 +177,10 @@ class IntelligenceRepository:
                     variants_created,
                     variants_updated,
                     images_synced,
+                    rows_processed,
+                    rows_created,
+                    rows_updated,
+                    rows_failed,
                     error_message
                 FROM sync_runs
                 ORDER BY started_at DESC
@@ -194,6 +203,11 @@ class IntelligenceRepository:
                 """
                 SELECT
                     id,
+                    (
+                        SELECT s.name
+                        FROM suppliers s
+                        WHERE s.id = sync_runs.supplier_id
+                    ) AS supplier,
                     started_at,
                     finished_at,
                     status,
@@ -203,6 +217,10 @@ class IntelligenceRepository:
                     variants_created,
                     variants_updated,
                     images_synced,
+                    rows_processed,
+                    rows_created,
+                    rows_updated,
+                    rows_failed,
                     error_message
                 FROM sync_runs
                 ORDER BY started_at DESC

@@ -10,3 +10,9 @@ class PimSyncResponse(BaseModel):
     variants_unchanged: int = 0
     images_discovered: int = 0
     images_synced: int = 0
+    sectors_assigned: int = 0
+    sectors_missing: int = 0
+    rows_processed: int = 0
+    rows_created: int = 0
+    rows_updated: int = 0
+    rows_failed: int = 0

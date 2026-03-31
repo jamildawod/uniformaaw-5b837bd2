@@ -1,9 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { API_ORIGIN } from "@/lib/api";
+import Link from "next/link";
+import { cleanName, getItemNo, getProductImage } from "@/lib/product-utils";
+
+const BLUR_DATA_URL =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgMzAwIDMwMCI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNmNWVmZTYiLz48L3N2Zz4=";
+
+export const COLOR_MAP: Record<string, string> = {
+  svart: "#000000",
+  vit: "#ffffff",
+  grå: "#9ca3af",
+  blå: "#2563eb",
+  röd: "#dc2626",
+  grön: "#16a34a",
+  beige: "#d6d3d1",
+  marin: "#1e3a8a",
+  navy: "#1e3a8a",
+  gul: "#facc15",
+  rosa: "#f472b6",
+}
+
+export function cleanColorName(color: string): string {
+  if (!color) return ""
+  return color.split(" ").slice(-1)[0].toLowerCase()
+}
 
 export type StoreImageLike = StoreImage | string;
 
@@ -28,26 +49,29 @@ export type StoreVariant = {
   images: StoreImageLike[];
 };
 
-export type StoreCertification = {
-  name: string;
-  label: string | null;
-  qr: string | null;
-};
-
 export type StoreProduct = {
   id: string;
+  baseItemNo?: string;
+  ItemNo?: string | null;
+  itemNo?: string | null;
+  article_number?: string | null;
+  item_no?: string | null;
   external_id?: string;
+  image?: string | null;
+  image_url?: string | null;
   name: string;
   slug: string;
   description: string | null;
   brand: string | null;
-  material?: string | null;
-  care_instructions?: string[];
-  tags?: string[];
-  certifications?: StoreCertification[];
-  qr_code?: string | null;
-  attributes?: Record<string, string>;
+  material: string | null;
+  fit: string | null;
+  care_instructions: string[];
+  tags: string[];
+  certifications: string[];
+  qr_code: string | null;
+  attributes: Record<string, string> | null;
   price?: string | number | null;
+  primary_image?: string | null;
   category: {
     id: number;
     name: string;
@@ -61,117 +85,65 @@ export type StoreProduct = {
   sizes?: string[];
 };
 
-/**
- * Convert any image path to an absolute URL suitable for <img src>.
- * Uses API_ORIGIN (not API_URL which includes /api/v1) so that root-relative
- * paths like /uploads/foo.jpg resolve correctly to the API host origin.
- */
-export function toAbsoluteUrl(path?: string | null): string | null {
-  if (!path) return null;
-  // Fix mangled proxy paths like /media/http/... or /media/https/... → https://...
-  const cleaned = path.replace(/^\/media\/https?\//, "https://");
-  try {
-    // If it's already a full URL (http/https), new URL() returns it unchanged.
-    // For root-relative paths (/uploads/...) it strips the base path and uses
-    // only the origin — which is exactly what we want.
-    return new URL(cleaned, API_ORIGIN).toString();
-  } catch {
-    return null;
-  }
-}
+export function ProductCard({ product, isTopMatch }: { product: StoreProduct; isTopMatch?: boolean }) {
+  const displayProduct =
+    product.baseItemNo && Array.isArray(product.variants) && product.variants.length > 0
+      ? (product.variants[0] as any)
+      : product;
+  const itemNo = getItemNo(displayProduct);
+  const variantCount = Array.isArray(product.variants) ? product.variants.length : 0;
+  const safeName = cleanName(product.name) || "Uniforma";
+  const image = getProductImage(product);
 
-function resolveImageCandidate(image?: StoreImageLike | null): string | null {
-  if (!image) return null;
-  if (typeof image === "string") {
-    return toAbsoluteUrl(image);
-  }
-
-  return (
-    toAbsoluteUrl(image.url) ??
-    toAbsoluteUrl(image.external_path) ??
-    toAbsoluteUrl(image.local_path)
-  );
-}
-
-/**
- * Pick the best available image URL for a product.
- * Always returns a non-empty string (falls back to /placeholder.jpg).
- */
-export function resolveProductImage(
-  product: Pick<StoreProduct, "images" | "variants">,
-): string {
-  const safeImages = product.images ?? [];
-  const safeVariants = product.variants ?? [];
-
-  const directImage = resolveImageCandidate(safeImages[0]);
-  if (directImage) {
-    return directImage;
-  }
-
-  const sortedImages = [...safeImages]
-    .filter((image): image is StoreImage => typeof image !== "string")
-    .sort((a, b) => {
-      if (a.is_primary && !b.is_primary) return -1;
-      if (!a.is_primary && b.is_primary) return 1;
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-    });
-
-  const variantImages = safeVariants.flatMap((variant) => variant.images ?? []);
-  const candidates: StoreImageLike[] = [...sortedImages, ...variantImages];
-
-  for (const img of candidates) {
-    const url = resolveImageCandidate(img);
-    if (url) return url;
-  }
-
-  return "/placeholder.jpg";
-}
-
-/** Resolve a single StoreImage to an absolute URL (for galleries). */
-export function resolveImageUrl(img: StoreImageLike): string {
-  return resolveImageCandidate(img) ?? "/placeholder.jpg";
-}
-
-export function ProductCard({ product }: { product: StoreProduct }) {
-  const primarySrc = resolveProductImage(product);
-  // Track image error so we can fall back to placeholder without crashing.
-  const [imgSrc, setImgSrc] = useState(primarySrc);
-  const safeName = product.name || "Uniforma";
-  const safeCategoryName = product.category?.name || "Produkt";
+  console.log("PRODUCT DEBUG:", product);
+  console.log("ITEMNO:", itemNo);
 
   return (
     <Link
-      href={`/product/${product.slug}`}
-      className="group bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-all duration-200 flex flex-col text-center"
+      href={`/product/${itemNo}`}
+      className="relative group bg-white border border-gray-200 rounded-xl p-4 text-center shadow-sm hover:shadow-md transition-all duration-200 flex flex-col"
     >
-      {/* IMAGE */}
-      <div className="relative aspect-square mb-2 bg-[#f5f5f5]">
-        <Image
-          src={imgSrc}
-          alt={safeName}
-          fill
-          unoptimized
-          className="object-contain p-2"
-          sizes="200px"
-          loading="lazy"
-          onError={() => setImgSrc("/placeholder.jpg")}
-        />
+      {isTopMatch && (
+        <div className="absolute top-2 left-2 bg-black text-white text-xs px-2 py-1 rounded z-10">
+          Bästa match
+        </div>
+      )}
+
+      <div className="flex justify-center mb-4">
+        <div className="relative w-32 h-32 rounded-full bg-[#f5efe6] flex items-center justify-center overflow-hidden flex-shrink-0">
+          {image && (
+            <Image
+              src={image}
+              alt={itemNo}
+              fill
+              className="object-contain p-[5%]"
+              loading={isTopMatch ? undefined : "lazy"}
+              priority={Boolean(isTopMatch)}
+              placeholder="blur"
+              blurDataURL={BLUR_DATA_URL}
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              onError={(e) => { e.currentTarget.src = "/images/placeholder.webp"; }}
+            />
+          )}
+        </div>
       </div>
 
-      {/* TEXT */}
-      <p className="text-[10px] uppercase text-gray-400 mb-0.5">
-        {safeCategoryName}
-      </p>
-      <h3 className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug mb-3">
+      <h3 className="text-sm font-medium text-gray-800 mb-1 line-clamp-2 leading-snug">
         {safeName}
       </h3>
 
-      {/* BUTTON */}
-      <div className="mt-auto flex justify-center">
-        <span className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded-md hover:bg-blue-600 transition">
+      <p className="text-xs text-gray-400 mb-2">Art.nr: {itemNo}</p>
+      {variantCount > 0 && (
+        <p className="text-xs text-gray-500 mb-2">{variantCount} varianter</p>
+      )}
+
+      <div className="mt-auto">
+        <span className="inline-block bg-blue-500 text-white text-xs px-4 py-2 rounded-md group-hover:bg-blue-600 transition">
           Läs mer
         </span>
       </div>
     </Link>
   );
 }
+
+export default ProductCard;

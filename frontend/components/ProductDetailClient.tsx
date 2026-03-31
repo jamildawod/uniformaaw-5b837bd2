@@ -1,420 +1,412 @@
-"use client";
+"use client"
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowLeft, CheckCircle2, ShieldCheck, Tag } from "lucide-react";
+import Image from "next/image"
+import { useState } from "react"
+import { safeArray } from "@/components/SafeArray"
+import type { StoreVariant } from "@/components/ProductCard"
+import { VariantSelector } from "@/components/VariantSelector"
+import { cleanName, getItemNo, resolveImageUrl, resolveProductImage } from "@/lib/product-utils"
 
-import {
-  resolveImageUrl,
-  resolveProductImage,
-  type StoreImage,
-  type StoreImageLike,
-  type StoreProduct,
-  type StoreVariant,
-} from "@/components/ProductCard";
-import { VariantSelector } from "@/components/VariantSelector";
+const BLUR_DATA_URL =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NjAiIGhlaWdodD0iOTYwIiB2aWV3Qm94PSIwIDAgOTYwIDk2MCI+PHJlY3Qgd2lkdGg9Ijk2MCIgaGVpZ2h0PSI5NjAiIGZpbGw9IiNmNWVmZTYiLz48L3N2Zz4=";
 
-type Props = {
-  product: StoreProduct;
-};
+// ── Care instruction text labels ──────────────────────────────────────────────
 
-const CARE_INSTRUCTION_META: Record<
-  string,
-  { icon: string; label: string }
-> = {
-  wash_60: { icon: "60°", label: "Tvätt 60°" },
-  no_bleach: { icon: "No", label: "Ingen blekning" },
-  tumble_dry_low: { icon: "TD", label: "Torktumla låg värme" },
-  iron_medium: { icon: "IR", label: "Stryk medelvärme" },
-};
-
-function isStoreImage(image: StoreImageLike): image is StoreImage {
-  return typeof image !== "string";
+const CARE_MAP: Record<string, string> = {
+  dry_clean: "Kemtvätt",
+  machine_wash: "Maskintvätt",
+  machine_wash_85: "Maskintvätt 85°",
+  hand_wash: "Handtvätt",
+  no_bleach: "Ej blekning",
+  bleach: "Blekning",
+  tumble_dry: "Torktumlas",
+  tumble_dry_low: "Torktumlas låg",
+  no_tumble_dry: "Ej torktumling",
+  iron_low: "Strykning låg",
+  iron_medium: "Strykning medel",
+  iron_high: "Strykning hög",
+  no_iron: "Ej strykning",
+  wash_30: "Tvätt 30°C",
+  wash_40: "Tvätt 40°C",
+  wash_60: "Tvätt 60°C",
+  wash_85: "Tvätt 85°C",
+  line_dry: "Hängtorkning",
+  flat_dry: "Torkas plant",
+  no_wash: "Ej tvätt",
 }
 
-function sortImages(images: StoreImageLike[]) {
-  return [...images].sort((left, right) => {
-    const a = isStoreImage(left) ? left : null;
-    const b = isStoreImage(right) ? right : null;
+// ── Care instruction SVG icons ────────────────────────────────────────────────
 
-    if (!a && !b) return 0;
-    if (!a) return 1;
-    if (!b) return -1;
+function CareIcon({ type }: { type: string }) {
+  const key = (typeof type === "string" ? type : String(type)).toLowerCase().trim()
+  const label = CARE_MAP[key] ?? key
+  const stroke = "#374151"
+  const sw = 1.5
 
-    if (a.is_primary && !b.is_primary) return -1;
-    if (!a.is_primary && b.is_primary) return 1;
-    return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-  });
-}
+  let icon: JSX.Element
 
-function dedupeImages(images: StoreImageLike[]) {
-  const seen = new Set<string>();
-
-  return sortImages(images).filter((image) => {
-    const key =
-      typeof image === "string"
-        ? image
-        : image.url ?? image.local_path ?? image.external_path ?? String(image.id);
-
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-/**
- * Safe image component that falls back to /placeholder.jpg on load error.
- * Resets the error state whenever the `src` prop changes so switching gallery
- * images never leaves a stale error fallback on screen.
- */
-function ProductImage({
-  src,
-  alt,
-  priority = false,
-}: {
-  src: string;
-  alt: string;
-  priority?: boolean;
-}) {
-  const [error, setError] = useState(false);
-
-  // Reset error when src changes (e.g. user clicks a different gallery thumbnail)
-  useEffect(() => {
-    setError(false);
-  }, [src]);
-
-  const displaySrc = error ? "/placeholder.jpg" : src;
-
-  if (displaySrc.startsWith("data:")) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={displaySrc} alt={alt} className="h-full w-full object-cover" />;
+  if (key === "no_bleach") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M18 6L32 30H4L18 6z" stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+        <path d="M10 26L26 12" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    )
+  } else if (key === "bleach") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M18 6L32 30H4L18 6z" stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+      </svg>
+    )
+  } else if (key === "tumble_dry") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="5" y="5" width="26" height="26" rx="3" stroke={stroke} strokeWidth={sw} />
+        <circle cx="18" cy="18" r="7" stroke={stroke} strokeWidth={sw} />
+      </svg>
+    )
+  } else if (key === "tumble_dry_low") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="5" y="5" width="26" height="26" rx="3" stroke={stroke} strokeWidth={sw} />
+        <circle cx="18" cy="18" r="7" stroke={stroke} strokeWidth={sw} />
+        <circle cx="25" cy="11" r="1.8" fill={stroke} />
+      </svg>
+    )
+  } else if (key === "no_tumble_dry") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="5" y="5" width="26" height="26" rx="3" stroke={stroke} strokeWidth={sw} />
+        <circle cx="18" cy="18" r="7" stroke={stroke} strokeWidth={sw} />
+        <path d="M13 13l10 10M23 13L13 23" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    )
+  } else if (key === "line_dry") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="5" y="5" width="26" height="26" rx="3" stroke={stroke} strokeWidth={sw} />
+        <line x1="18" y1="9" x2="18" y2="27" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    )
+  } else if (key === "flat_dry") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="5" y="5" width="26" height="26" rx="3" stroke={stroke} strokeWidth={sw} />
+        <line x1="9" y1="18" x2="27" y2="18" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    )
+  } else if (key === "iron_low") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M6 25L9 15Q10 11 15 11H27Q31 11 31 15L29 21Q28 25 24 25Z" stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+        <line x1="7" y1="25" x2="29" y2="25" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        <circle cx="15" cy="18" r="1.8" fill={stroke} />
+      </svg>
+    )
+  } else if (key === "iron_medium") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M6 25L9 15Q10 11 15 11H27Q31 11 31 15L29 21Q28 25 24 25Z" stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+        <line x1="7" y1="25" x2="29" y2="25" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        <circle cx="13" cy="18" r="1.8" fill={stroke} />
+        <circle cx="19" cy="18" r="1.8" fill={stroke} />
+      </svg>
+    )
+  } else if (key === "iron_high") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M6 25L9 15Q10 11 15 11H27Q31 11 31 15L29 21Q28 25 24 25Z" stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+        <line x1="7" y1="25" x2="29" y2="25" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        <circle cx="12" cy="18" r="1.8" fill={stroke} />
+        <circle cx="18" cy="18" r="1.8" fill={stroke} />
+        <circle cx="24" cy="18" r="1.8" fill={stroke} />
+      </svg>
+    )
+  } else if (key === "no_iron") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M6 25L9 15Q10 11 15 11H27Q31 11 31 15L29 21Q28 25 24 25Z" stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+        <line x1="7" y1="25" x2="29" y2="25" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        <path d="M13 14l10 9M23 14L13 23" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    )
+  } else if (key === "dry_clean") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="18" r="12" stroke={stroke} strokeWidth={sw} />
+        <text x="18" y="23" textAnchor="middle" fontSize="12" fill={stroke} fontFamily="system-ui,sans-serif" fontWeight="700">P</text>
+      </svg>
+    )
+  } else if (key === "hand_wash") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M6 11h24v13a3 3 0 01-3 3H9a3 3 0 01-3-3V11z" stroke={stroke} strokeWidth={sw} />
+        <path d="M4 11h28" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        <path d="M14 23v-5m4 5v-7m4 7v-5" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        <path d="M12 23q0 1.5 2 1.5h8q2 0 2-1.5" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    )
+  } else if (key === "no_wash") {
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M6 11h24v13a3 3 0 01-3 3H9a3 3 0 01-3-3V11z" stroke={stroke} strokeWidth={sw} />
+        <path d="M4 11h28" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        <path d="M12 15l12 9M24 15L12 24" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    )
+  } else {
+    // Washtub with optional temperature (machine_wash, wash_30, wash_40, wash_60, wash_85, machine_wash_85)
+    const match = key.match(/(\d+)/)
+    const temp = match ? match[1] : null
+    icon = (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M6 11h24v13a3 3 0 01-3 3H9a3 3 0 01-3-3V11z" stroke={stroke} strokeWidth={sw} />
+        <path d="M4 11h28" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />
+        {temp ? (
+          <text x="18" y="23" textAnchor="middle" fontSize="8" fill={stroke} fontFamily="system-ui,sans-serif" fontWeight="700">{temp}°</text>
+        ) : (
+          <circle cx="18" cy="19" r="4" stroke={stroke} strokeWidth={sw} />
+        )}
+      </svg>
+    )
   }
 
   return (
-    <Image
-      src={displaySrc}
-      alt={alt}
-      width={1200}
-      height={1500}
-      unoptimized
-      className="h-full w-full object-cover"
-      sizes="(max-width: 1024px) 100vw, 55vw"
-      priority={priority}
-      onError={() => setError(true)}
-    />
-  );
-}
-
-function QrPreview({ value, alt }: { value: string; alt: string }) {
-  const src = `https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=${encodeURIComponent(value)}`;
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={alt}
-      className="h-20 w-20 rounded-lg border border-stone-200 bg-white p-1"
-      loading="lazy"
-    />
-  );
-}
-
-function DetailBlock({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-400">
-        {title}
-      </h2>
-      <div className="mt-3">{children}</div>
+    <div className="flex flex-col items-center gap-1.5" title={label}>
+      {icon}
+      <span className="text-[10px] text-stone-400 text-center leading-tight" style={{ maxWidth: 52 }}>
+        {label}
+      </span>
     </div>
-  );
+  )
 }
 
-export function ProductDetailClient({ product }: Props) {
-  const tags = product.tags ?? [];
-  const care = product.care_instructions ?? [];
-  const certs = product.certifications ?? [];
-  const attrs = product.attributes ?? {};
-  const safeVariants = product.variants ?? [];
-  const safeName = product.name || "Uniforma";
-  const safeImages = product.images ?? [];
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const variants = useMemo(
-    () => safeVariants.filter((variant) => variant.is_active ?? true),
-    [safeVariants],
-  );
+export function ProductDetailClient({ product }: any) {
+  const directImages: any[] = safeArray(product?.images)
+  const variants = safeArray(product?.variants) as StoreVariant[]
 
-  const productGallery = useMemo(() => {
-    if (safeImages.length > 0) {
-      return dedupeImages(safeImages);
-    }
-    return dedupeImages(variants.flatMap((variant) => variant.images ?? []));
-  }, [safeImages, variants]);
+  // Collect all images: direct first, then variant images as fallback gallery
+  const variantImages: any[] = variants.flatMap((v) => safeArray(v.images))
+  const images: any[] = directImages.length > 0 ? directImages : variantImages
+  const certifications: any[] = safeArray(product?.certifications)
+  const care: any[] = safeArray(product?.care_instructions)
+  const tags: any[] = safeArray(product?.tags)
+  const articleNumber = getItemNo(product)
 
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<StoreVariant | null>(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  console.log("[DEBUG] product.variants:", product?.variants)
 
-  const activeGallery = useMemo(() => {
-    const variantImages = selectedVariant?.images ?? [];
-    return variantImages.length > 0 ? dedupeImages(variantImages) : productGallery;
-  }, [productGallery, selectedVariant]);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  const [selectedColor, setSelectedColor] = useState<string | null>(null)
+  const [, setSelectedVariant] = useState<StoreVariant | null>(null)
+  const [activeImage, setActiveImage] = useState(0)
 
-  // Reset gallery index when the active gallery changes (variant switch or initial load)
-  useEffect(() => {
-    setSelectedImageIndex(0);
-  }, [selectedVariant]);
-
-  // Clamp index to gallery bounds defensively
-  const safeImageIndex = Math.min(
-    selectedImageIndex,
-    Math.max(0, activeGallery.length - 1),
-  );
-
-  const mainImageSrc = activeGallery[safeImageIndex]
-    ? resolveImageUrl(activeGallery[safeImageIndex])
-    : resolveProductImage(product);
-
-  const visibleCareInstructions = care.filter(
-    (item) => Boolean(item) && CARE_INSTRUCTION_META[item],
-  );
-  const visibleTags = tags.filter(Boolean);
-  const visibleCertifications = certs.filter(Boolean);
-  const visibleAttributes = Object.entries(attrs).filter(
-    ([key, value]) => Boolean(key) && Boolean(value),
-  );
+  const mainImageUrl =
+    product?.image
+      ? product.image
+      : images.length > 0
+      ? resolveImageUrl(images[Math.min(activeImage, images.length - 1)])
+      : resolveProductImage(product)
 
   return (
-    <section className="grid gap-12 lg:grid-cols-[1fr_480px] xl:grid-cols-[1fr_520px]">
-      <div className="flex flex-col gap-3">
-        <div className="overflow-hidden rounded-2xl bg-stone-100 shadow-sm ring-1 ring-stone-200/60">
-          <div className="aspect-[4/5]">
-            <ProductImage src={mainImageSrc} alt={safeName} priority />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
+      {/* ── TOP GRID: image left | info right ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
+
+        {/* LEFT: Image gallery */}
+        <div className="space-y-4">
+          <div className="relative aspect-square bg-stone-50 rounded-2xl overflow-hidden border border-stone-100 flex items-center justify-center">
+            {mainImageUrl && (
+              <Image
+                src={mainImageUrl}
+                alt={product?.name ?? "Produktbild"}
+                fill
+                className="object-contain p-8"
+                loading="lazy"
+                placeholder="blur"
+                blurDataURL={BLUR_DATA_URL}
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                onError={(e) => { e.currentTarget.src = "/images/placeholder.webp"; }}
+              />
+            )}
           </div>
-        </div>
 
-        {activeGallery.length > 1 && (
-          <div className="grid grid-cols-5 gap-2">
-            {activeGallery.slice(0, 5).map((image, index) => {
-              const src = resolveImageUrl(image);
-              const isActive = index === safeImageIndex;
-
-              return (
+          {mainImageUrl && images.length > 1 && (
+            <div className="overflow-x-auto flex gap-2">
+              {images.map((img: any, i: number) => (
                 <button
-                  key={typeof image === "string" ? image : image.id}
+                  key={i}
                   type="button"
-                  onClick={() => setSelectedImageIndex(index)}
-                  className={`overflow-hidden rounded-xl bg-stone-100 ring-1 transition ${
-                    isActive
-                      ? "ring-stone-950"
-                      : "ring-stone-200/60 hover:ring-stone-400"
+                  onClick={() => setActiveImage(i)}
+                  className={`relative w-16 h-16 rounded-xl border-2 overflow-hidden bg-stone-50 transition flex items-center justify-center ${
+                    activeImage === i
+                      ? "border-stone-950"
+                      : "border-stone-200 hover:border-stone-400"
                   }`}
                 >
-                  <div className="aspect-square">
-                    <ProductImage src={src} alt={safeName} />
-                  </div>
+                  <Image
+                    src={resolveImageUrl(img)}
+                    alt=""
+                    fill
+                    className="object-contain p-1"
+                    loading="lazy"
+                    placeholder="blur"
+                    blurDataURL={BLUR_DATA_URL}
+                    sizes="64px"
+                    onError={(e) => { e.currentTarget.src = "/images/placeholder.webp"; }}
+                  />
                 </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col">
-        <div className="flex flex-wrap items-center gap-2">
-          {product.category && (
-            <Link
-              href={`/shop?category=${product.category.slug}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600 transition hover:bg-stone-200"
-            >
-              <Tag className="h-3 w-3" />
-              {product.category.name}
-            </Link>
+              ))}
+            </div>
           )}
         </div>
 
-        <h1 className="mt-4 text-3xl font-bold tracking-tight text-stone-950 sm:text-4xl">
-          {safeName}
-        </h1>
+        {/* RIGHT: Title + selectors + eco/QR */}
+        <div className="space-y-8">
 
-        <p className="mt-5 text-sm leading-7 text-stone-600">
-          {product.description ||
-            "Produktinformation kommer snart. Kontakta Uniforma för material, profilering och leveransalternativ."}
-        </p>
-
-        <div className="mt-8 space-y-4">
-          {product.material && (
-            <DetailBlock title="Material">
-              <p className="text-sm leading-7 text-stone-700">
-                {product.material}
+          {/* Header */}
+          <div>
+            {product?.brand && product.brand !== "Hejco" && (
+              <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-1">
+                {product.brand}
               </p>
-            </DetailBlock>
-          )}
+            )}
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-stone-950 leading-tight">
+              {product?.name ? cleanName(product.name) : ""}
+            </h1>
+            {product?.category?.name && (
+              <p className="mt-1 text-sm text-stone-400">{product.category.name}</p>
+            )}
+            {articleNumber && (
+              <p className="mt-2 text-sm text-stone-400">
+                Artikelnummer: {articleNumber}
+              </p>
+            )}
+          </div>
 
-          {visibleCareInstructions.length > 0 && (
-            <DetailBlock title="Tvättråd">
-              <div className="flex flex-wrap gap-2.5">
-                {visibleCareInstructions.map((instruction) => {
-                  const meta = CARE_INSTRUCTION_META[instruction];
-
-                  return (
-                    <div
-                      key={instruction}
-                      className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700"
-                    >
-                      <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-white px-2 text-xs font-semibold text-stone-950 ring-1 ring-stone-200">
-                        {meta.icon}
-                      </span>
-                      <span>{meta.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </DetailBlock>
-          )}
-
-          {visibleTags.length > 0 && (
-            <DetailBlock title="Taggar">
-              <div className="flex flex-wrap gap-2">
-                {visibleTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-700"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </DetailBlock>
-          )}
-
-          {visibleCertifications.length > 0 && (
-            <DetailBlock title="Certifieringar">
-              <div className="space-y-3">
-                {visibleCertifications.map((certification, index) => (
-                  <div
-                    key={`${certification.name}-${index}`}
-                    className="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-stone-700 ring-1 ring-stone-200">
-                        <ShieldCheck className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-stone-950">
-                          {certification.name}
-                          {certification.label ? ` ${certification.label}` : ""}
-                        </p>
-                        <p className="mt-1 text-xs text-stone-500">
-                          Kvalitets- och materialcertifiering
-                        </p>
-                      </div>
-                    </div>
-                    {certification.qr && (
-                      <div className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs text-stone-500">
-                        <QrPreview
-                          value={certification.qr}
-                          alt={`${certification.name} QR-kod`}
-                        />
-                        <div>
-                          <p className="font-medium text-stone-700">QR</p>
-                          <a
-                            href={certification.qr}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-1 block max-w-[180px] truncate text-stone-500 transition hover:text-stone-950"
-                          >
-                            {certification.qr}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </DetailBlock>
-          )}
-
-          {visibleAttributes.length > 0 && (
-            <DetailBlock title="Specifikation">
-              <dl className="space-y-3">
-                {visibleAttributes.map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex items-start justify-between gap-6 border-b border-stone-100 pb-3 last:border-b-0 last:pb-0"
-                  >
-                    <dt className="text-sm text-stone-500">{label}</dt>
-                    <dd className="text-right text-sm font-medium text-stone-800">
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </DetailBlock>
-          )}
-
-          {product.qr_code && visibleCertifications.length === 0 && (
-            <DetailBlock title="QR">
-              <div className="flex items-center gap-3">
-                <QrPreview value={product.qr_code} alt={`${safeName} QR-kod`} />
-                <a
-                  href={product.qr_code}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-stone-600 transition hover:text-stone-950"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Öppna produktlänk
-                </a>
-              </div>
-            </DetailBlock>
-          )}
-        </div>
-
-        {safeVariants.length > 0 && (
-          <div className="mt-8">
+          {/* Variant selector */}
+          {variants.length > 0 && (
             <VariantSelector
-              variants={safeVariants}
+              variants={variants}
               selectedSize={selectedSize}
               selectedColor={selectedColor}
               onSizeChange={setSelectedSize}
               onColorChange={setSelectedColor}
               onVariantChange={setSelectedVariant}
             />
-          </div>
-        )}
+          )}
 
-        <div className="mt-8 rounded-2xl bg-stone-950 p-6 text-white">
-          <p className="text-sm font-semibold">Kontakta oss för offert</p>
-          <p className="mt-1 text-sm text-stone-400">
-            Vi hjälper dig med profilering, storleksfrågor och anpassade beställningar.
-          </p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/#kontakt"
-              className="inline-flex items-center justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-stone-100"
-            >
-              Skicka förfrågan
-            </Link>
+          {/* Eco certifications + QR inline */}
+          {(certifications.length > 0 || product?.qr_code) && (
+            <div className="flex items-start gap-6 pt-2">
+              {certifications.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {certifications.map((c: any, i: number) => (
+                    <span
+                      key={i}
+                      className="text-xs font-medium px-3 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {product?.qr_code && (
+                <Image
+                  src={product.qr_code}
+                  alt="QR-kod"
+                  width={64}
+                  height={64}
+                  className="w-16 h-16 rounded-lg border border-stone-200 flex-shrink-0"
+                  loading="lazy"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Description */}
+          {product?.description && (
+            <div className="border-t border-stone-100 pt-6">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
+                Beskrivning
+              </h2>
+              <p className="text-stone-700 text-sm leading-relaxed">{product.description}</p>
+            </div>
+          )}
+
+          {/* Material */}
+          {product?.material && (
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-2">
+                Material
+              </h2>
+              <p className="text-stone-700 text-sm">{product.material}</p>
+            </div>
+          )}
+
+          {/* Passform */}
+          {product?.fit && (
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-2">
+                Passform
+              </h2>
+              <p className="text-stone-700 text-sm">{product.fit}</p>
+            </div>
+          )}
+
+          {/* Care instructions */}
+          {care.length > 0 && (
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">
+                Skötselråd
+              </h2>
+              <div className="flex flex-wrap gap-6">
+                {care.map((c: any, i: number) => (
+                  <CareIcon key={i} type={c} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
+                Taggar
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((t: any, i: number) => (
+                  <span
+                    key={i}
+                    className="text-xs px-3 py-1 rounded-full bg-stone-100 text-stone-600"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* OEKO-TEX BADGE */}
+          <div className="mt-6 border-t pt-4">
+            <p className="text-xs font-semibold text-gray-700 mb-2">
+              Certifiering
+            </p>
+            <Image
+              src="/images/oeko.gif"
+              alt="OEKO-TEX Certified"
+              width={112}
+              height={56}
+              className="h-14 w-auto object-contain"
+              loading="lazy"
+            />
           </div>
+
         </div>
-
-        <Link
-          href="/shop"
-          className="mt-6 flex items-center gap-2 self-start text-sm font-medium text-stone-500 transition hover:text-stone-950"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Tillbaka till produkter
-        </Link>
       </div>
-    </section>
-  );
+
+    </div>
+  )
 }

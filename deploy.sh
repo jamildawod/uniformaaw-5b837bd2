@@ -30,4 +30,10 @@ docker compose restart || true
 echo "Restart admin (pm2)"
 pm2 restart uniforma-admin || true
 
+echo "Restart frontend (pm2)"
+pm2 restart uniforma-frontend || pm2 start /opt/uniforma/frontend/ecosystem.config.js --only uniforma-frontend
+
+echo "Save PM2 process list"
+pm2 save
+
 echo "Deploy finished"

@@ -42,3 +42,19 @@ class AdminOverrideRepository:
         self.session.add(override)
         await self.session.flush()
         return override
+
+    async def delete_by_product_and_fields(
+        self,
+        product_id: uuid.UUID,
+        field_names: list[str],
+    ) -> None:
+        if not field_names:
+            return
+
+        statement = select(AdminOverride).where(
+            AdminOverride.product_id == product_id,
+            AdminOverride.field_name.in_(field_names),
+        )
+        result = await self.session.execute(statement)
+        for override in result.scalars().all():
+            await self.session.delete(override)

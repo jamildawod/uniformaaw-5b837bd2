@@ -1,37 +1,60 @@
-import { ProductDetailClient } from "@/components/ProductDetailClient"
+import { notFound } from "next/navigation";
 
-async function getProduct(slug: string) {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/${slug}`, {
-      cache: "no-store",
-    })
+import { ProductDetailClient } from "@/components/ProductDetailClient";
+import { fetchProductOverrides } from "@/lib/api";
+import {
+  applyProductOverrides,
+  getItemNo,
+  getProductImage,
+  isVisibleStorefrontProduct,
+} from "@/lib/product-utils";
 
-    if (!res.ok) return null
+async function getProducts() {
+  const res = await fetch("https://uniforma.livosys.se/api/v1/products?limit=2000", {
+    cache: "no-store",
+  });
 
-    const data = await res.json()
-
-    return data ?? null
-  } catch (e) {
-    console.error("Product fetch failed:", e)
-    return null
+  if (!res.ok) {
+    return [];
   }
+
+  const data = await res.json();
+
+  console.log("ALL PRODUCTS:", data.length);
+
+  return Array.isArray(data) ? data : [];
 }
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
-  const product = await getProduct(params.slug)
+  const [products, overrides] = await Promise.all([
+    getProducts(),
+    fetchProductOverrides(),
+  ]);
+  const itemNo = params.slug;
 
-  const safeProduct = {
-    ...product,
-    images: product?.images ?? [],
-    variants: product?.variants ?? [],
-    certifications: product?.certifications ?? [],
-    care_instructions: product?.care_instructions ?? [],
-    tags: product?.tags ?? [],
-  }
+  console.log("PARAMS:", itemNo);
+
+  const product = products.find((p: any) => {
+    try {
+      return getItemNo(p) === itemNo;
+    } catch {
+      return false;
+    }
+  });
+
+  console.log("FOUND PRODUCT:", product);
 
   if (!product) {
-    return <div>Produkt kunde inte laddas</div>
+    notFound();
   }
 
-  return <ProductDetailClient product={safeProduct} />
+  const visibleProduct = applyProductOverrides(product, overrides);
+
+  if (!isVisibleStorefrontProduct(visibleProduct)) {
+    notFound();
+  }
+
+  visibleProduct.image = getProductImage(visibleProduct);
+
+  return <ProductDetailClient product={visibleProduct} />;
 }

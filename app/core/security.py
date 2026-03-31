@@ -25,6 +25,10 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
+def get_password_hash(password: str) -> str:
+    return hash_password(password)
+
+
 def _create_token(
     subject: str,
     expires_delta: timedelta,

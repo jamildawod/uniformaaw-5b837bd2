@@ -7,5 +7,6 @@ class CategoryListItem(BaseModel):
     slug: str
     image: str | None = None
     parent_id: int | None = None
+    sector_slug: str | None = None  # which ?sector= param to use for product filtering
 
     model_config = ConfigDict(from_attributes=True)

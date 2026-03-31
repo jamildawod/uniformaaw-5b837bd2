@@ -5,6 +5,12 @@ import Link from "next/link";
 import { fetchProducts } from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
 import type { StoreProduct } from "@/components/ProductCard";
+import {
+  filterHomepageProducts,
+  getItemNo,
+  getProductCategory,
+  normalizeCategorySlug,
+} from "@/lib/product-utils";
 
 type Category = {
   id: number;
@@ -20,7 +26,19 @@ export function CategoryProductsRow({ category }: { category: Category }) {
     let active = true;
     fetchProducts({ category: category.slug, limit: 6 }).then((data) => {
       if (active) {
-        setProducts(data as StoreProduct[]);
+        const categorySlug = normalizeCategorySlug(category.slug.toLowerCase());
+        const filteredProducts = filterHomepageProducts(data as any[]).filter((p: any) => {
+          const productCategory = getProductCategory(p);
+
+          console.log("CATEGORY MATCH:", {
+            category: category.slug,
+            productCategory,
+          });
+
+          return productCategory.includes(categorySlug);
+        });
+
+        setProducts(filteredProducts as StoreProduct[]);
         setLoading(false);
       }
     });
@@ -30,7 +48,7 @@ export function CategoryProductsRow({ category }: { category: Category }) {
   }, [category.slug]);
 
   // Don't render the section at all if no products came back
-  if (!loading && products.length === 0) return null;
+  if (!loading && (products || []).length === 0) return null;
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -47,7 +65,7 @@ export function CategoryProductsRow({ category }: { category: Category }) {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
@@ -61,10 +79,12 @@ export function CategoryProductsRow({ category }: { category: Category }) {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          {(products || []).map((product) => {
+            const itemNo = getItemNo(product as any);
+            if (!itemNo) return null;
+            return <ProductCard key={itemNo} product={product} />;
+          })}
         </div>
       )}
     </section>

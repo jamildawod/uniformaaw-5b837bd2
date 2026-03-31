@@ -4,6 +4,7 @@ import { env } from "@/lib/config/env";
 import { AUTH_COOKIE } from "@/lib/auth/cookies";
 import type { AdminProduct, ProductListFilters } from "@/lib/types/products";
 import type { SyncRun } from "@/lib/types/sync";
+import type { FooterSettings } from "@/lib/admin-tools";
 
 export async function fetchAdminProducts(filters: ProductListFilters): Promise<AdminProduct[]> {
   const products = await fetchWithToken<AdminProduct[]>(
@@ -27,6 +28,10 @@ export async function fetchSyncRuns(): Promise<SyncRun[]> {
   } catch {
     return [];
   }
+}
+
+export async function fetchFooterSettings(): Promise<FooterSettings> {
+  return fetchWithToken<FooterSettings>("/api/v1/admin/footer");
 }
 
 export async function fetchWithToken<T>(path: string): Promise<T> {

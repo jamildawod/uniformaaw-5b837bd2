@@ -23,6 +23,7 @@ from app.db.session import get_db
 from app.models.category import Category
 from app.models.media_file import MediaFile
 from app.models.product import Product
+from app.models.product_sector import ProductSector
 from app.models.product_variant import ProductVariant
 from app.models.publish_log import PublishLog
 from app.models.site_content import SiteContent
@@ -52,12 +53,6 @@ class BrandRead(BaseModel):
     logo_url: str | None = None
 
 
-class BrandCreate(BaseModel):
-    name: str
-    slug: str | None = None
-    logo_url: str | None = None
-
-
 @router.get("/admin/brands", response_model=list[BrandRead])
 async def list_brands(
     db: AsyncSession = Depends(get_db),
@@ -70,19 +65,6 @@ async def list_brands(
         BrandRead(id=i + 1, name=b, slug=b.lower().replace(" ", "-"))
         for i, b in enumerate(result.scalars().all())
     ]
-
-
-@router.post("/admin/brands", response_model=BrandRead, status_code=status.HTTP_201_CREATED)
-async def create_brand(
-    payload: BrandCreate,
-    _: User = Depends(get_current_superuser),
-) -> BrandRead:
-    return BrandRead(
-        id=0,
-        name=payload.name,
-        slug=payload.slug or payload.name.lower().replace(" ", "-"),
-        logo_url=payload.logo_url,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -158,42 +140,6 @@ async def delete_category(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
     await db.delete(category)
     await db.commit()
-
-
-# ---------------------------------------------------------------------------
-# Attributes (in-memory store)
-# ---------------------------------------------------------------------------
-
-class AttributeDefinition(BaseModel):
-    id: int
-    name: str
-    type: str
-
-
-class AttributeCreate(BaseModel):
-    name: str
-    type: str = "text"
-
-
-_attribute_store: list[dict] = []
-_attr_id_seq: int = 0
-
-
-@router.get("/admin/attributes", response_model=list[AttributeDefinition])
-async def list_attributes(_: User = Depends(get_current_superuser)) -> list[AttributeDefinition]:
-    return [AttributeDefinition(**a) for a in _attribute_store]
-
-
-@router.post("/admin/attributes", response_model=AttributeDefinition, status_code=status.HTTP_201_CREATED)
-async def create_attribute(
-    payload: AttributeCreate,
-    _: User = Depends(get_current_superuser),
-) -> AttributeDefinition:
-    global _attr_id_seq
-    _attr_id_seq += 1
-    attr = {"id": _attr_id_seq, "name": payload.name, "type": payload.type}
-    _attribute_store.append(attr)
-    return AttributeDefinition(**attr)
 
 
 # ---------------------------------------------------------------------------
@@ -364,13 +310,6 @@ async def delete_media(
     await db.commit()
 
 
-# ---------------------------------------------------------------------------
-# Quotes
-# ---------------------------------------------------------------------------
-
-@router.get("/admin/quotes", response_model=list[dict])
-async def list_quotes(_: User = Depends(get_current_superuser)) -> list[dict]:
-    return []
 
 
 # ---------------------------------------------------------------------------
@@ -440,6 +379,13 @@ async def get_analytics(
     )
     last_publish = last_publish_result.scalar_one_or_none()
 
+    # Sector coverage
+    with_sector_result = await db.execute(
+        select(func.count(func.distinct(ProductSector.product_id)))
+    )
+    products_with_sector = with_sector_result.scalar() or 0
+    products_without_sector = total_products - products_with_sector
+
     return {
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "total_products": total_products,
@@ -449,6 +395,8 @@ async def get_analytics(
         "total_media_files": media_count,
         "last_media_upload": last_upload.isoformat() if last_upload else None,
         "last_publish": last_publish.isoformat() if last_publish else None,
+        "products_with_sector": products_with_sector,
+        "products_without_sector": products_without_sector,
     }
 
 
@@ -632,19 +580,6 @@ class SupplierIntegrationRead(BaseModel):
     last_imported_product_count: int | None
 
 
-class SupplierIntegrationUpdate(BaseModel):
-    provider: str | None = None
-    ftp_host: str
-    ftp_username: str | None = None
-    ftp_password: str | None = None
-    pictures_path: str
-    product_data_path: str
-    stock_path: str
-    sync_enabled: bool
-    sync_hour: int
-    timeout_seconds: int
-
-
 async def _get_last_sync_run(db: AsyncSession) -> SyncRun | None:
     result = await db.execute(
         select(SyncRun).order_by(SyncRun.started_at.desc()).limit(1)
@@ -671,33 +606,6 @@ async def get_supplier_integration(
         sync_enabled=settings.pim_sync_enabled,
         sync_hour=settings.pim_sync_cron_hour,
         timeout_seconds=settings.ftp_timeout_seconds,
-        last_sync_at=last_run.started_at.isoformat() if last_run else None,
-        last_sync_status=last_run.status if last_run else None,
-        last_sync_message=last_run.error_message if last_run else None,
-        last_imported_product_count=last_run.rows_processed if last_run else None,
-    )
-
-
-@router.put("/admin/integrations/supplier", response_model=SupplierIntegrationRead)
-async def update_supplier_integration(
-    payload: SupplierIntegrationUpdate,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_superuser),
-) -> SupplierIntegrationRead:
-    settings = get_settings()
-    last_run = await _get_last_sync_run(db)
-    return SupplierIntegrationRead(
-        provider=payload.provider or settings.default_supplier_name,
-        ftp_host=payload.ftp_host,
-        ftp_username=payload.ftp_username,
-        ftp_password_masked="***" if payload.ftp_password else None,
-        has_password=bool(payload.ftp_password),
-        pictures_path=payload.pictures_path,
-        product_data_path=payload.product_data_path,
-        stock_path=payload.stock_path,
-        sync_enabled=payload.sync_enabled,
-        sync_hour=payload.sync_hour,
-        timeout_seconds=payload.timeout_seconds,
         last_sync_at=last_run.started_at.isoformat() if last_run else None,
         last_sync_status=last_run.status if last_run else None,
         last_sync_message=last_run.error_message if last_run else None,
@@ -1085,70 +993,6 @@ async def run_publish(
         message=log.message,
         files_uploaded=log.files_uploaded,
         created_at=log.created_at.isoformat(),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Users
-# ---------------------------------------------------------------------------
-
-class UserRead(BaseModel):
-    id: int
-    email: str
-    role: str
-    is_active: bool
-    created_at: str
-
-
-class UserCreate(BaseModel):
-    email: str
-    password: str
-    role: str = "editor"
-
-
-@router.get("/admin/users", response_model=list[UserRead])
-async def list_users(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_superuser),
-) -> list[UserRead]:
-    result = await db.execute(select(User).order_by(User.created_at))
-    return [
-        UserRead(
-            id=u.id,
-            email=u.email,
-            role="admin" if u.is_superuser else "editor",
-            is_active=u.is_active,
-            created_at=u.created_at.isoformat(),
-        )
-        for u in result.scalars().all()
-    ]
-
-
-@router.post("/admin/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(
-    payload: UserCreate,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_superuser),
-) -> UserRead:
-    from app.core.security import hash_password
-    existing = await db.execute(select(User).where(User.email == payload.email))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    new_user = User(
-        email=payload.email,
-        hashed_password=hash_password(payload.password),
-        is_superuser=(payload.role == "admin"),
-        is_active=True,
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-    return UserRead(
-        id=new_user.id,
-        email=new_user.email,
-        role="admin" if new_user.is_superuser else "editor",
-        is_active=new_user.is_active,
-        created_at=new_user.created_at.isoformat(),
     )
 
 

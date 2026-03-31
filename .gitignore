@@ -18,3 +18,6 @@ frontend/node_modules/
 frontend/.next/
 deploy/logs/
 deploy/webhook/*.env
+node_modules
+uploads
+admin/components/admin/test-add.tsx

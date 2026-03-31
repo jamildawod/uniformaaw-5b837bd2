@@ -31,6 +31,14 @@ export interface ProductVariant {
 export interface Product {
   id: string;
   external_id: string;
+  ItemNo?: string | null;
+  itemNo?: string | null;
+  article_number?: string | null;
+  item_no?: string | null;
+  image?: string | null;
+  image_url?: string | null;
+  ProductLifeCycleStatus?: string | null;
+  lifecycle_status?: string | null;
   name: string;
   slug: string;
   description: string | null;
@@ -44,6 +52,8 @@ export interface Product {
   attributes: Record<string, string> | null;
   is_active: boolean;
   price: string | null;
+  primary_image?: string | null;
+  created_at?: string;
   category: Category | null;
   images: ProductImage[];
   variants: ProductVariant[];
